@@ -1,0 +1,3 @@
+[submodule "car/common/nanopb"]
+	path = car/common/nanopb
+	url = git@github.com:BlueJayRacing/nanopb.git
