@@ -76,10 +76,22 @@ static void udp_server_task(void *pvParameters)
         struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
         socklen_t socklen = sizeof(source_addr);
 
+        struct timeval recv_time;
+        int64_t recv_time_i;
+
+        struct timeval sent_time;
+        int64_t sent_time_i;
+
+        char recv_strftime[64];
+        char sent_strftime[64];
+
         while (1)
         {
             ESP_LOGI(TAG, "Waiting for data");
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+            gettimeofday(&recv_time, NULL);
+            recv_time_i = (int64_t) recv_time.tv_sec;// * 1000000L + (int64_t) recv_time.tv_usec;
+            sprintf(recv_strftime, "%lld", recv_time_i);
 
             if (len > 0)
             {
@@ -93,7 +105,14 @@ static void udp_server_task(void *pvParameters)
                 //     sendto(sock, )
                 // }
 
-                sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                sendto(sock, recv_strftime, strlen(recv_strftime), 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                gettimeofday(&sent_time, NULL);
+                sent_time_i = (int64_t) sent_time.tv_sec;// * 1000000L + (int64_t) sent_time.tv_usec;
+
+                sprintf(sent_strftime, "%lld", sent_time_i);
+
+                sendto(sock, sent_strftime, strlen(sent_strftime), 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                ESP_LOGI(TAG, "Time of day: %s", sent_strftime);
             }
             else
             {

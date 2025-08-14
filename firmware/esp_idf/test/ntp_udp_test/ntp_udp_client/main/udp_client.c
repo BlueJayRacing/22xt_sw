@@ -33,8 +33,46 @@
 
 #define PORT 3333
 #define HOST_IP_ADDR "192.168.4.1"
+#define US_PER_SECOND 1000000
 static const char *TAG = "UDP SOCKET CLIENT";
 static const char *payload = "Message from ESP32 UDP Client";
+
+void sub_timeval(struct timeval t1, struct timeval t2, struct timeval *td)
+{
+    td->tv_usec = t2.tv_usec - t1.tv_usec;
+    td->tv_sec  = t2.tv_sec - t1.tv_sec;
+    if (td->tv_sec > 0 && td->tv_usec < 0)
+    {
+        td->tv_usec += US_PER_SECOND;
+        td->tv_sec--;
+    }
+    else if (td->tv_sec < 0 && td->tv_usec > 0)
+    {
+        td->tv_usec -= US_PER_SECOND;
+        td->tv_sec++;
+    }
+}
+
+void add_timeval(struct timeval t1, struct timeval t2, struct timeval *td)
+{
+    td->tv_usec = t2.tv_usec + t1.tv_usec;
+    td->tv_sec  = t2.tv_sec + t1.tv_sec;
+    if (td->tv_usec >= US_PER_SECOND)
+    {
+        td->tv_usec -= US_PER_SECOND;
+        td->tv_sec++;
+    }
+    else if (td->tv_usec <= -US_PER_SECOND)
+    {
+        td->tv_usec += US_PER_SECOND;
+        td->tv_sec--;
+    }
+}
+
+void half_timeval(struct timeval * t1) {
+    t1->tv_sec /= 2;
+    t1->tv_usec /=2;
+}
 
 static void udp_client_task(void *pvParameters)
 {
@@ -76,15 +114,17 @@ static void udp_client_task(void *pvParameters)
         int64_t serv_sent_time_i;
         int64_t serv_recv_time_i;
 
-        char strftime_buf[64];
+        struct timeval cur_time;
+
+        char * first_msg = "first ping from client";
 
         while (1) {
 
             gettimeofday(&sent_time, NULL);
-            sent_time_i = (int64_t) sent_time.tv_sec * 1000000L + (int64_t) sent_time.tv_usec;
-            sprintf(strftime_buf, "%Ld", sent_time_i);
+            sent_time_i = (int64_t) sent_time.tv_sec;// * 1000000L + (int64_t) sent_time.tv_usec;
+            // sprintf(strftime_buf, "%Ld", sent_time_i);
 
-            int err = sendto(sock, strftime_buf, strlen(strftime_buf), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            int err = sendto(sock, first_msg, strlen(first_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 break;
@@ -97,7 +137,7 @@ static void udp_client_task(void *pvParameters)
             // receive when the server sent this message, and store local timestamp
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
             gettimeofday(&recv_time, NULL);
-            recv_time_i = (int64_t) sent_time.tv_sec * 1000000L + (int64_t) sent_time.tv_usec;
+            recv_time_i = (int64_t) recv_time.tv_sec;// * 1000000L + (int64_t) recv_time.tv_usec;
 
             // Error occurred during receiving
             if (len < 0) {
@@ -111,9 +151,9 @@ static void udp_client_task(void *pvParameters)
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 
                 // store server sent time
-                strtoll(rx_buffer, &serv_sent_time_i, 10);
-                serv_sent_time.tv_usec = serv_sent_time_i % 1000000L;
-                serv_sent_time.tv_sec = floor(serv_sent_time_i / 1000000L);
+                serv_sent_time_i = strtoll(rx_buffer, NULL, 10);
+                //serv_sent_time.tv_usec = serv_sent_time_i % 1000000L;
+                serv_sent_time.tv_sec = (int64_t) (serv_sent_time_i); /// 1000000L);
             }
 
             len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
@@ -130,15 +170,28 @@ static void udp_client_task(void *pvParameters)
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 
                 // store server sent time
-                strtoll(rx_buffer, &serv_recv_time_i, 10);
-                serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
-                serv_recv_time.tv_sec = floor(serv_recv_time_i / 1000000L);
+                serv_recv_time_i = strtoll(rx_buffer, NULL, 10);
+                // serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
+                serv_recv_time.tv_sec = (int64_t) serv_recv_time_i; // / 1000000L;
             }
 
-            struct timeval offset = ((serv_recv_time - sent_time) + (serv_sent_time - recv_time)) / 2;
-            adjtime(offset);
+            struct timeval sub1;
+            struct timeval sub2;
+            struct timeval offset;
+            // = ((serv_recv_time - sent_time) + (serv_sent_time - recv_time)) / 2;
+            sub_timeval(serv_recv_time, sent_time, &sub1);
+            sub_timeval(serv_sent_time, recv_time, &sub2);
+            add_timeval(sub1, sub2, &offset);
+            half_timeval(&offset);
+           
+            gettimeofday(&cur_time, NULL);
+            sub_timeval(offset, cur_time, &cur_time);
+            cur_time.tv_usec = 0;
+            ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
+            gettimeofday(&cur_time, NULL);
+            ESP_LOGI(TAG, "Time of day: %lld, offset: %lld", (int64_t) cur_time.tv_sec, (int64_t) offset.tv_sec);
 
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
         }
 
         if (sock != -1) {
