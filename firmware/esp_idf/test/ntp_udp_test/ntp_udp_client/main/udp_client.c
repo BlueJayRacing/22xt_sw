@@ -65,16 +65,24 @@ static void udp_client_task(void *pvParameters)
 
         ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
 
-        struct timeval cur_time;
-        int64_t cur_time_i;
+        struct timeval sent_time;
+        int64_t sent_time_i;
+
+        struct timeval recv_time;
+        int64_t recv_time_i;
+
+        struct timeval serv_sent_time;
+        struct timeval serv_recv_time;
+        int64_t serv_sent_time_i;
+        int64_t serv_recv_time_i;
 
         char strftime_buf[64];
 
         while (1) {
 
-            gettimeofday(&cur_time, NULL);
-            cur_time_i = (int64_t) cur_time.tv_sec * 1000000L + (int64_t) cur_time.tv_usec;
-            sprintf(strftime_buf, "%Ld", cur_time_i);
+            gettimeofday(&sent_time, NULL);
+            sent_time_i = (int64_t) sent_time.tv_sec * 1000000L + (int64_t) sent_time.tv_usec;
+            sprintf(strftime_buf, "%Ld", sent_time_i);
 
             int err = sendto(sock, strftime_buf, strlen(strftime_buf), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             if (err < 0) {
@@ -85,7 +93,11 @@ static void udp_client_task(void *pvParameters)
 
             struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
+
+            // receive when the server sent this message, and store local timestamp
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+            gettimeofday(&recv_time, NULL);
+            recv_time_i = (int64_t) sent_time.tv_sec * 1000000L + (int64_t) sent_time.tv_usec;
 
             // Error occurred during receiving
             if (len < 0) {
@@ -97,11 +109,35 @@ static void udp_client_task(void *pvParameters)
                 rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
                 ESP_LOGI(TAG, "%s", rx_buffer);
-                if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-                    ESP_LOGI(TAG, "Received expected message, reconnecting");
-                    break;
-                }
+                
+                // store server sent time
+                strtoll(rx_buffer, &serv_sent_time_i, 10);
+                serv_sent_time.tv_usec = serv_sent_time_i % 1000000L;
+                serv_sent_time.tv_sec = floor(serv_sent_time_i / 1000000L);
             }
+
+            len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+
+            // Error occurred during receiving
+            if (len < 0) {
+                ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+                break;
+            }
+            // Data received
+            else {
+                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
+                ESP_LOGI(TAG, "%s", rx_buffer);
+                
+                // store server sent time
+                strtoll(rx_buffer, &serv_recv_time_i, 10);
+                serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
+                serv_recv_time.tv_sec = floor(serv_recv_time_i / 1000000L);
+            }
+
+            struct timeval offset = ((serv_recv_time - sent_time) + (serv_sent_time - recv_time)) / 2;
+            adjtime(offset);
+
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
