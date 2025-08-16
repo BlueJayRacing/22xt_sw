@@ -120,10 +120,11 @@ static void udp_client_task(void *pvParameters)
 
         while (1) {
 
+            // get local time T0
             gettimeofday(&sent_time, NULL);
             sent_time_i = (int64_t) sent_time.tv_sec;// * 1000000L + (int64_t) sent_time.tv_usec;
-            // sprintf(strftime_buf, "%Ld", sent_time_i);
 
+            // send first msg to server
             int err = sendto(sock, first_msg, strlen(first_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
@@ -134,7 +135,7 @@ static void udp_client_task(void *pvParameters)
             struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
 
-            // receive when the server sent this message, and store local timestamp
+            // receive when the server sent this message, and store local timestamp t3
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
             gettimeofday(&recv_time, NULL);
             recv_time_i = (int64_t) recv_time.tv_sec;// * 1000000L + (int64_t) recv_time.tv_usec;
@@ -150,7 +151,7 @@ static void udp_client_task(void *pvParameters)
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 
-                // store server sent time
+                // store server sent time t2
                 serv_sent_time_i = strtoll(rx_buffer, NULL, 10);
                 //serv_sent_time.tv_usec = serv_sent_time_i % 1000000L;
                 serv_sent_time.tv_sec = (int64_t) (serv_sent_time_i); /// 1000000L);
@@ -169,7 +170,7 @@ static void udp_client_task(void *pvParameters)
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 
-                // store server sent time
+                // store server recv time t1
                 serv_recv_time_i = strtoll(rx_buffer, NULL, 10);
                 // serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
                 serv_recv_time.tv_sec = (int64_t) serv_recv_time_i; // / 1000000L;
@@ -189,7 +190,7 @@ static void udp_client_task(void *pvParameters)
             cur_time.tv_usec = 0;
             ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
             gettimeofday(&cur_time, NULL);
-            ESP_LOGI(TAG, "Time of day: %lld, offset: %lld", (int64_t) cur_time.tv_sec, (int64_t) offset.tv_sec);
+            ESP_LOGI(TAG, "Time of day: %lld", (int64_t) cur_time.tv_sec);
 
             vTaskDelay(10000 / portTICK_PERIOD_MS);
         }
