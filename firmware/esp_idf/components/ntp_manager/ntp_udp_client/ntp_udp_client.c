@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ntp_udp_client.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -13,14 +14,11 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "esp_mac.h"
-#include "esp_eth.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "esp_http_client.h"
 #include "esp_event.h"
 #include "esp_system.h"
-// #include "esp_sntp.h"
-// #include "esp_netif_sntp.h"
 
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
@@ -35,7 +33,6 @@
 #define HOST_IP_ADDR "192.168.4.1"
 #define US_PER_SECOND 1000000
 static const char *TAG = "UDP SOCKET CLIENT";
-static const char *payload = "Message from ESP32 UDP Client";
 
 void sub_timeval(struct timeval t1, struct timeval t2, struct timeval *td)
 {
@@ -74,6 +71,16 @@ void half_timeval(struct timeval * t1) {
     t1->tv_usec /=2;
 }
 
+void ensure_wifi_connection() {
+    esp_err_t err;
+    wifi_ap_record_t ap_info;
+    do {
+        esp_wifi_connect();
+        err = esp_wifi_sta_get_ap_info(&ap_info);
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+    } while (err != ESP_OK);
+}
+
 static void udp_client_task(void *pvParameters)
 {
     char rx_buffer[128];
@@ -104,10 +111,8 @@ static void udp_client_task(void *pvParameters)
         ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
 
         struct timeval sent_time;
-        int64_t sent_time_i;
 
         struct timeval recv_time;
-        int64_t recv_time_i;
 
         struct timeval serv_sent_time;
         struct timeval serv_recv_time;
@@ -119,10 +124,14 @@ static void udp_client_task(void *pvParameters)
         char * first_msg = "first ping from client";
 
         while (1) {
+            // check wifi is connected
+            wifi_ap_record_t ap_rec;
+            if (esp_wifi_sta_get_ap_info(&ap_rec) != ESP_OK) {
+                ensure_wifi_connection();
+            }
 
             // get local time T0
             gettimeofday(&sent_time, NULL);
-            sent_time_i = (int64_t) sent_time.tv_sec;// * 1000000L + (int64_t) sent_time.tv_usec;
 
             // send first msg to server
             int err = sendto(sock, first_msg, strlen(first_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
@@ -138,7 +147,6 @@ static void udp_client_task(void *pvParameters)
             // receive when the server sent this message, and store local timestamp t3
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
             gettimeofday(&recv_time, NULL);
-            recv_time_i = (int64_t) recv_time.tv_sec;// * 1000000L + (int64_t) recv_time.tv_usec;
 
             // Error occurred during receiving
             if (len < 0) {
@@ -153,8 +161,8 @@ static void udp_client_task(void *pvParameters)
                 
                 // store server sent time t2
                 serv_sent_time_i = strtoll(rx_buffer, NULL, 10);
-                //serv_sent_time.tv_usec = serv_sent_time_i % 1000000L;
-                serv_sent_time.tv_sec = (int64_t) (serv_sent_time_i); /// 1000000L);
+                serv_sent_time.tv_usec = serv_sent_time_i % 10000000L;
+                serv_sent_time.tv_sec = (int64_t) (serv_sent_time_i / 1000000L);
             }
 
             len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
@@ -172,8 +180,8 @@ static void udp_client_task(void *pvParameters)
                 
                 // store server recv time t1
                 serv_recv_time_i = strtoll(rx_buffer, NULL, 10);
-                // serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
-                serv_recv_time.tv_sec = (int64_t) serv_recv_time_i; // / 1000000L;
+                serv_recv_time.tv_usec = serv_recv_time_i % 1000000L;
+                serv_recv_time.tv_sec = (int64_t) serv_recv_time_i / 1000000L;
             }
 
             struct timeval sub1;
@@ -187,12 +195,10 @@ static void udp_client_task(void *pvParameters)
            
             gettimeofday(&cur_time, NULL);
             sub_timeval(offset, cur_time, &cur_time);
-            cur_time.tv_usec = 0;
             ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
-            gettimeofday(&cur_time, NULL);
-            ESP_LOGI(TAG, "Time of day: %lld", (int64_t) cur_time.tv_sec);
+            ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t) cur_time.tv_sec, (int64_t) cur_time.tv_usec);
 
-            vTaskDelay(10000 / portTICK_PERIOD_MS);
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
         if (sock != -1) {
@@ -242,27 +248,17 @@ void wifi_connection()
     esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_configuration);
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_start();
-    esp_wifi_connect();
+
+    ensure_wifi_connection();
 }
 
-void app_main(void)
+void init_client_wifi(void)
 {
     wifi_connection();
     vTaskDelay(5000 / portTICK_PERIOD_MS);
+}
+
+// will there be problems with no pin to core
+void start_client_timesync_loop() {    
     xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
-
-    // esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("192.168.4.1");
-    // esp_netif_sntp_init(&config);
-    // esp_netif_sntp_start();
-
-    // struct timeval tv_now;
-
-    // while (1) {
-    //     vTaskDelay(100);
-
-    //     gettimeofday(&tv_now, NULL);
-    //     int64_t time_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
-
-    //     ESP_LOGI(TAG, "%lld", time_us);
-    // }
 }
