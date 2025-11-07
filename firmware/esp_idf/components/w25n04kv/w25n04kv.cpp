@@ -37,7 +37,7 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
             return ret;
         }
 
-        ret = gpio_set_level(wp_pin_, 0);
+        ret = gpio_set_level(wp_pin_, 1);
         if (ret) {
             return ret;
         }
@@ -59,11 +59,11 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
 
     vTaskDelay(5);
 
-    ret = disableWriteProtection();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to disable write protection on device: %d", ret);
-        return ret;
-    }
+    // ret = disableWriteProtection();
+    // if (ret != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to disable write protection on device: %d", ret);
+    //     return ret;
+    // }
 
     vTaskDelay(5);
 
@@ -133,19 +133,24 @@ esp_err_t W25N04KV::enableWrite(void)
     return transfer(W25N04KV_OP_CODE_WRITE_ENABLE, dummy_rx);
 }
 
+esp_err_t W25N04KV::disableWrite(void) {
+    std::vector<uint8_t> dummy_rx;
+    return transfer(W25N04KV_OP_CODE_WRITE_DISABLE, dummy_rx);
+}
+
 esp_err_t W25N04KV::disableWriteProtection(void)
 {
     std::vector<uint8_t> tx_data            = {0x00};
 
     std::vector<uint8_t> dummy_rx;
-    return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0x0A, 8 , 0, tx_data);
+    return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0xA0, 8 , 0, tx_data);
 };
 
 esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
 {
     esp_err_t ret = enableWrite();
     if (ret != ESP_OK) {
-        ESP_LOGI(TAG, "Failed to enable write: %d", ret);
+        ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
 
@@ -154,7 +159,7 @@ esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
     return transfer(W25N04KV_OP_CODE_BLOCK_ERASE, dummy_rx, block_address, 24);
 }
 
-esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address)
+esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address)
 {
     if (tx_data.size() > PAGE_SIZE) {
         return ESP_ERR_INVALID_ARG;
@@ -162,15 +167,21 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
 
     esp_err_t ret = enableWrite();
     if (ret != ESP_OK) {
-        ESP_LOGI(TAG, "Failed to enable write: %d", ret);
+        ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
 
     std::vector<uint8_t> dummy_rx;
 
-    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, 0, 16, 0, tx_data);
+    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, column_address, 16, 0, tx_data);
     if (ret != ESP_OK) {
-        ESP_LOGI(TAG, "Failed to enable write: %d", ret);
+        ESP_LOGE(TAG, "Failed to load data: %d", ret);
+        return ret;
+    }
+
+    ret = enableWrite();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
 
@@ -201,7 +212,7 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
 {
     std::vector<uint8_t> rx_data(1);
 
-    esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0x0C, 8);
+    esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0xC0, 8);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read status register: %d", ret);
         return ret;
@@ -214,6 +225,28 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
     device_status->erase_failure   = rx_data[0] & 0x04;
     device_status->write_enable    = rx_data[0] & 0x02;
     device_status->is_busy         = rx_data[0] & 0x01;
+
+    return ESP_OK;
+}
+
+esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config) {
+    std::vector<uint8_t> rx_data(1);
+
+    esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0xB0, 8);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read status register: %d", ret);
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "Value of read status register: %d", (int)rx_data[0]);
+
+    device_config->otp_lock = rx_data[0] & 0x40;
+    device_config->otp_mode = rx_data[0] & 0x20;
+    device_config->status_reg_1_lock = rx_data[0] & 0x10;
+    device_config->ecc = rx_data[0] & 0x08;
+    device_config->buffer_mode = rx_data[0] & 0x04;
+    device_config->output_driver_strength = rx_data[0] & 0x02;
+    device_config->hold_disable = rx_data[0] & 0x01;
 
     return ESP_OK;
 }
@@ -236,6 +269,42 @@ esp_err_t W25N04KV::isCorrectDevice(void)
     if (rx_data[0] != 0xEF || rx_data[1] != 0xAA || rx_data[2] != 0x23) {
         return ESP_ERR_INVALID_RESPONSE;
     }
+
+    return ESP_OK;
+}
+
+esp_err_t W25N04KV::printStatusReg(void) {
+    w25n04kv_device_status_t status;
+    esp_err_t err = readStatus(&status);
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read status register.");
+        return err;
+    }
+
+    ESP_LOGI(TAG, "Status Reg 1: Failure %d", status.program_failure);
+    ESP_LOGI(TAG, "Status Reg 1: Erase Failure %d", status.erase_failure);
+    ESP_LOGI(TAG, "Status Reg 1: Write Enable %d", status.write_enable);
+    ESP_LOGI(TAG, "Status Reg 1: IC is busy %d", status.is_busy);
+        
+    return ESP_OK;
+}
+
+esp_err_t W25N04KV::printConfigReg(void) {
+    w25n04kv_device_config_t config_status;
+    esp_err_t err = readConfigRegister(&config_status);
+
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    ESP_LOGI(TAG, "Config/Status Reg 1: otp lock %d", config_status.otp_lock);
+    ESP_LOGI(TAG, "Config/Status Reg 1: otp mode %d", config_status.otp_mode);
+    ESP_LOGI(TAG, "Config/Status Reg 1: status reg 1 lock %d", config_status.status_reg_1_lock);
+    ESP_LOGI(TAG, "Config/Status Reg 1: ecc enable %d", config_status.ecc);
+    ESP_LOGI(TAG, "Config/Status Reg 1: buffer mode %d", config_status.buffer_mode);
+    ESP_LOGI(TAG, "Config/Status Reg 1: output driver strength %d", config_status.output_driver_strength);
+    ESP_LOGI(TAG, "Config/Status Reg 1: hold disable %d", config_status.hold_disable);
 
     return ESP_OK;
 }

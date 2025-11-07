@@ -74,7 +74,7 @@ void Test::testParamErrors(void)
 
     std::vector<uint8_t> too_large_vec(2049);
     uint32_t address = 1000; // Value does not matter, error should be thrown regardless
-    assert(spi_flash_.writePage(too_large_vec, address) == ESP_ERR_INVALID_ARG);
+    assert(spi_flash_.writePage(too_large_vec, address, 0) == ESP_ERR_INVALID_ARG);
 
     ESP_LOGI(TAG, "Passed Testing error handling for parameter errors");
 }
@@ -94,7 +94,7 @@ void Test::testReadWriteMemory(void)
     std::srand(esp_cpu_get_cycle_count());
     uint32_t page_address = std::rand() % W25N04KV::NUM_PAGES;
 
-    assert(spi_flash_.writePage(tx_data, page_address) == ESP_OK);
+    assert(spi_flash_.writePage(tx_data, page_address, 0) == ESP_OK);
 
     vTaskDelay(1);
 

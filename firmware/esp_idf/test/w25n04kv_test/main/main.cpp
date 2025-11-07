@@ -53,23 +53,47 @@ extern "C" void app_main(void)
     std::vector<uint8_t> rx_data(10);
 
     for (int i = 0; i < 10; i++) {
-        tx_data.at(i) = i;
+        tx_data.at(i) = rand() % 255;
     }
 
+    spi_flash_.isCorrectDevice();
+    spi_flash_.enableWrite();
+
+    vTaskDelay(2);
+
+    spi_flash_.printStatusReg();
+    spi_flash_.printConfigReg();
+
     std::srand(esp_cpu_get_cycle_count());
-    uint32_t page_address = std::rand() % W25N04KV::NUM_PAGES;
+    uint32_t page_address = 0x00001001; //std::rand() % W25N04KV::NUM_PAGES;
+
+    // 0xxxxx00
 
     ESP_LOGI(TAG, "Page address: %d", (int) page_address);
+
+    ESP_LOGI(TAG, "Erasing page");
 
     spi_flash_.eraseBlock(page_address / 64);
 
     vTaskDelay(1);
 
-    spi_flash_.writePage(tx_data, page_address);
+    ESP_LOGI(TAG, "Writing page");
+
+    for (int i = 0; i < 10; i++) {
+        ESP_LOGI(TAG, "Write data %d", tx_data[i]);
+        ESP_LOGI(TAG, "RX data %d", rx_data[i]);
+    }
+
+    spi_flash_.writePage(tx_data, page_address, 0);
+
+    spi_flash_.printStatusReg();
 
     for (;;) {
-        vTaskDelay(1);
+        vTaskDelay(5);
         spi_flash_.readPage(rx_data, page_address);
+        for (int i = 0; i < 10; i++) {
+            ESP_LOGI(TAG, "Read data %d", rx_data[i]);
+        }
     }
 
     ESP_LOGI(TAG, "Initialized SPI Flash");
