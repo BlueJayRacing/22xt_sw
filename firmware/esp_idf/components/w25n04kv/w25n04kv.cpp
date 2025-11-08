@@ -59,11 +59,11 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
 
     vTaskDelay(5);
 
-    // ret = disableWriteProtection();
-    // if (ret != ESP_OK) {
-    //     ESP_LOGE(TAG, "Failed to disable write protection on device: %d", ret);
-    //     return ret;
-    // }
+    ret = disableWriteProtection();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to disable write protection on device: %d", ret);
+        return ret;
+    }
 
     vTaskDelay(5);
 
@@ -171,9 +171,15 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
         return ret;
     }
 
+    vTaskDelay(60);
+
+    ESP_LOGI(TAG, "From write page");
+
+    printStatusReg();
+
     std::vector<uint8_t> dummy_rx;
 
-    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, column_address, 16, 0, tx_data);
+    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, 0, 16, 0, tx_data);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to load data: %d", ret);
         return ret;
@@ -185,8 +191,16 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
         return ret;
     }
 
+    printStatusReg();
+
     return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_address, 24);
 }
+
+// esp_err_t W25N04KV::loadPage(uint32_t page_addresss) {
+//     std::vector<uint8_t> dummy_rx;
+
+
+// }
 
 esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_address)
 {
