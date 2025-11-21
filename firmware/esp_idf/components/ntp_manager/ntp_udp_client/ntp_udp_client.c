@@ -108,7 +108,6 @@ static void udp_client_task(void *pvParameters)
         timeout.tv_usec = 0;
         setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
-        ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
 
         struct timeval sent_time;
 
