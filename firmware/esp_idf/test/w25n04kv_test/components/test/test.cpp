@@ -1,7 +1,7 @@
+#include <cstring>
 #include <esp_log.h>
 #include <esp_system.h>
 #include <test.hpp>
-#include <cstring>
 
 #define SPI2_MOSI_PIN 18
 #define SPI2_MISO_PIN 20
@@ -11,9 +11,10 @@ static const char* TAG = "test";
 
 Test::Test(esp_log_level_t test_log_level) { esp_log_level_set(TAG, test_log_level); }
 
-void Test::testW25N04KV(void) {
+void Test::testW25N04KV(void)
+{
     esp_err_t ret;
-    
+
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
@@ -26,8 +27,8 @@ void Test::testW25N04KV(void) {
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin = GPIO_NUM_1;
-    flash_init_params.wp_pin = GPIO_NUM_NC;
+    flash_init_params.cs_pin   = GPIO_NUM_1;
+    flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
     ESP_LOGI(TAG, "Initialized SPI Bus");
@@ -79,7 +80,6 @@ void Test::testParamErrors(void)
     ESP_LOGI(TAG, "Passed Testing error handling for parameter errors");
 }
 
-
 void Test::testReadWriteMemory(void)
 {
     ESP_LOGI(TAG, "Testing SPI Flash reading/writing to memory");
@@ -104,7 +104,6 @@ void Test::testReadWriteMemory(void)
         ESP_LOGI(TAG, "TX: %d, RX: %d\n", tx_data[i], rx_data[i]);
         // assert(tx_data[i] == rx_data[i]);
     }
-    
 
     ESP_LOGI(TAG, "Passed Testing SPI Flash reading/writing to memory");
 }
