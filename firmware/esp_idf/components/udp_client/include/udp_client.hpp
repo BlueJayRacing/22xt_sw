@@ -51,27 +51,26 @@ class UdpClient {
         UdpClient();
         ~UdpClient();
 
-        static bool is_wifi_connected();
-        static esp_err_t initialize_wifi();
-        static esp_err_t publish_data(uint64_t timestamp, uint8_t buf[], size_t buff_size);
-        static Message * recv_data();
+        bool is_wifi_connected();
+        esp_err_t initialize_wifi();
+        esp_err_t publish_data(uint64_t timestamp, uint8_t buf[], size_t buff_size);
+        Message * recv_data();
         static void udpListenerWorker(void *);
         // void udpSenderWorker();
         static void udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
-        static void udp_recv_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
+        void udp_recv_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
 
 
     private:
-        static esp_err_t ensure_wifi_connection(int max_attempts);
-        
-        static QueueHandle_t recv_queue;
+        esp_err_t ensure_wifi_connection(int max_attempts);
+        QueueHandle_t recv_queue;
 
-        static esp_event_base_t SENDER_EVENT_BASE;
-        static esp_event_loop_handle_t sender_loop_handle;
+        esp_event_base_t SENDER_EVENT_BASE;
+        esp_event_loop_handle_t sender_loop_handle;
 
-        static TaskHandle_t * recv_task_handle;
+        TaskHandle_t * recv_task_handle;
 
-        static SocketHandler socket_handler_;
+        SocketHandler socket_handler_;
 };
 
 #endif

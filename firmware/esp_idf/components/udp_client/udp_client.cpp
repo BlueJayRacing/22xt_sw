@@ -41,16 +41,15 @@ esp_err_t UdpClient::ensure_wifi_connection(int max_attempts) {
 }
 
 esp_err_t UdpClient::initialize_wifi() {
-
     esp_err_t err = socket_handler_.init(PORT, HOST_IP_ADDR);
     if (err != ESP_OK) {
         return err;
     }
 
-    err = ensure_wifi_connection(10);
-    if (err != ESP_OK) {
-        return err;
-    }
+    // err = ensure_wifi_connection(10);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
 
     // send_queue = xQueueCreate(10, sizeof(Message *));
     recv_queue = xQueueCreate(10, sizeof(Message *));
@@ -59,17 +58,17 @@ esp_err_t UdpClient::initialize_wifi() {
         .queue_size = 10,
         .task_name = "sender event",
         .task_priority = 2,
-        .task_stack_size = 2048,
+        .task_stack_size = 1024,
         .task_core_id = 2
     };
 
     // ESP_EVENT_DECLARE_BASE(SENDER_EVENT_BASE);
     // ESP_EVENT_DEFINE_BASE(SENDER_EVENT_BASE);
 
-    esp_event_loop_create(&sender_loop_args, &sender_loop_handle);
-    esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, nullptr);
+    // esp_event_loop_create(&sender_loop_args, &sender_loop_handle);
+    // esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
 
-    xTaskCreate(udpListenerWorker, "receiver thread", 2048, nullptr, (UBaseType_t) 1, recv_task_handle);
+    // xTaskCreate(udpListenerWorker, "receiver thread", 1024, (void *) this, (UBaseType_t) 1, recv_task_handle);
 
     return ESP_OK;
 }
@@ -101,9 +100,10 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, uint8_t buf[], size_t buf
 // }
 
 void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data) {
+    UdpClient * client = (UdpClient *) handler_arg;
     Message * msg = static_cast<Message *>(event_data);
 
-    socket_handler_.send(msg->buf, msg->msg_len);
+    client->socket_handler_.send(msg->buf, msg->msg_len);
 
     delete msg;
 }
@@ -115,13 +115,15 @@ Message * UdpClient::recv_data() {
     return msg;
 }
 
-void UdpClient::udpListenerWorker(void *) {
+void UdpClient::udpListenerWorker(void * pvParamter) {
+
+    UdpClient * client = (UdpClient *) pvParamter;
     uint8_t buf[20];
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100000));
 
-        if(!socket_handler_.recv(buf)) {
+        if(!client->socket_handler_.recv(buf) || !client->is_wifi_connected()) {
             continue;
         }
 
@@ -130,7 +132,7 @@ void UdpClient::udpListenerWorker(void *) {
         msg->timestamp = get_timestamp();
         msg->msg_len = 20;
         
-        xQueueSend(recv_queue, msg, 0);
+        xQueueSend(client->recv_queue, msg, 0);
 
         std::fill_n(buf, 20, 0);
 

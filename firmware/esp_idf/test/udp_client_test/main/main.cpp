@@ -2,6 +2,9 @@
 
 extern "C" void app_main() {
     UdpClient client;
-
     client.initialize_wifi();
+
+    while(1) {
+        
+    }
 }

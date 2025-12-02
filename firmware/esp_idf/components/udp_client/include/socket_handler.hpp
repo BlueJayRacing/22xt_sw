@@ -25,10 +25,11 @@ class SocketHandler {
         esp_err_t init(int port, char * ip_addr);
 
         esp_err_t send(uint8_t buf[], size_t buf_len);
-        bool recv(uint8_t * but);
+        bool recv(uint8_t * buf);
 
     private:
         SemaphoreHandle_t mutex;
+        int sock;
 
         struct timeval timeout;
 
