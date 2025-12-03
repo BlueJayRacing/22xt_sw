@@ -53,5 +53,5 @@
     "typeinfo": "cpp",
     "*.inc": "cpp"
   },
-  "idf.port": "/dev/tty.usbmodem112101"
+  "idf.port": "/dev/tty.usbmodem12101"
 }

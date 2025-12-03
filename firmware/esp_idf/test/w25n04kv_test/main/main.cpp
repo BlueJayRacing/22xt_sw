@@ -131,7 +131,7 @@ std::vector<uint8_t> format_send_data(std::vector<uint32_t>& wsgs)
         int ij;
         for (int j = 0; j < 4; j++) {
             ij         = 8 + (4 * i) + j;
-            output[ij] = ((uint32_t)wsg >> ((3 - j) * 8)) & 0xFF;
+            output[ij] = (wsg >> ((3 - j) * 8)) & 0xFF;
         }
     }
 
@@ -146,19 +146,17 @@ esp_err_t cont_write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t c
     ESP_LOGI(TAG, "Writing page");
 
     for (int i = 0; i < CHUNK_SIZE; i++) {
-        // std::string s = std::format("{:x}", tx_data[i]);
-        //  ESP_LOGI(TAG, "Data in hex %s", s.c_str());
+        std::string s = std::format("{:x}", tx_data[i]);
+        ESP_LOGI(TAG, "Data in hex %s", s.c_str());
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
     }
 
-    column_addr &= 0xFFF;
-    esp_err_t ret = spi_flash_.writePage(tx_data, page_addr, column_addr);
+    esp_err_t ret = spi_flash_.writePage(tx_data, page_addr);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to write. :(. Page number: %lu, Column number %u, error %d", page_addr, column_addr, ret);
         return ret;
     }
-    spi_flash_.printStatusReg();
 
     return ESP_OK;
 }
@@ -170,10 +168,6 @@ esp_err_t read_all(uint32_t page_addr, uint16_t column_addr)
     ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", page_addr, column_addr);
     esp_err_t ret;
     std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE);
-    ret = spi_flash_.readPage(rx_data, page_addr, column_addr);
-    for (int i = 0; i < CHUNK_SIZE; i++) {
-        ESP_LOGI(TAG, "Read data %d", rx_data[i]);
-    }
     // std::ofstream Data("wsgdata.csv");
     // Data << "Time, WSG1, WSG2, WSG3 \n";
     for (uint32_t i = 1; i < page_addr + 1; i++) {
@@ -181,17 +175,21 @@ esp_err_t read_all(uint32_t page_addr, uint16_t column_addr)
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "failed. :(). Page number %lu, error %d", i, ret);
         }
+        ESP_LOGI(TAG, "Current read page number: %lu", i);
+        for (int j = 0; j < CHUNK_SIZE; j++) {
+            ESP_LOGI(TAG, "Read data %d", rx_data[j]);
+        }
         std::vector<uint8_t> chunk(rx_data.begin(), rx_data.begin() + CHUNK_SIZE);
         std::vector<wsg_data> wsgs = interpret_read_data(chunk);
-        wait_for_ready();
         for (wsg_data w : wsgs) {
-            ESP_LOGI(TAG, "Time: %llu", w.time);
-            for (int j = 0; j < 3; j++) {
-                ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
-            }
+            // ESP_LOGI(TAG, "Time: %llu", w.time);
+            // for (int j = 0; j < 3; j++) {
+            //     ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
+            // }
             // Data << std::to_string(w.time) << "," << std::to_string(w.wsgs[0]) << "," << std::to_string(w.wsgs[1])
             // << "," << std::to_string(w.wsgs[2]) << "\n";
         }
+        wait_for_ready();
     }
     return ESP_OK;
 }
@@ -270,7 +268,7 @@ extern "C" void app_main(void)
     // Test test(ESP_LOG_DEBUG);
 
     // test.testW25N04KV();
-    // comment start
+    //  comment start
     esp_err_t ret;
     w25n04kv_init_param_t flash_init_params = init();
 
@@ -338,34 +336,35 @@ extern "C" void app_main(void)
     spi_flash_.enableWrite();
     wait_for_ready();
     vTaskDelay(100);
-    spi_flash_.writePage(tx_data, 2, 0);
+
     // cont_write(wsgs, page_addr, 0);
-    vTaskDelay(100);
-    wait_for_ready();
-
-    read_all(page_addr, 0);
-    // vTaskDelay(50);
-    // read_meta(metadata);
+    // vTaskDelay(100);
     // wait_for_ready();
-    // vTaskDelay(50);
-    // interpret_meta_data(metadata, page_addr, column_addr);
-    // wait_for_ready();
-    // vTaskDelay(10000);
-    // read_all(page_addr, column_addr);
-    //  uint32_t page_address = 0b00000000000000001; // std::rand() % W25N04KV::NUM_PAGES;
 
-    // int k = 1;
-    // for (int i = 0; i < k; i++) {
-    //     vTaskDelay(5);
-    //     spi_flash_.readPage(rx_data, page_address);
-    //     for (int i = 0; i < 20; i++) {
-    //         ESP_LOGI(TAG, "Read data %d", rx_data[i]);
-    //     }
+    // read_all(page_addr, 0);
+    //  vTaskDelay(50);
+    //  read_meta(metadata);
+    //  wait_for_ready();
+    //  vTaskDelay(50);
+    //  interpret_meta_data(metadata, page_addr, column_addr);
+    //  wait_for_ready();
+    //  vTaskDelay(10000);
+    //  read_all(page_addr, column_addr);
+    uint32_t page_address = 0b00000000000000001; // std::rand() % W25N04KV::NUM_PAGES;
+    std::vector<uint8_t> rx_data(20);
+    std::vector<uint32_t> wsg_data = {1, 1, 2};
+    // spi_flash_.writePage(tx_data, 2, 0);
+    cont_write(wsg_data, 2, 0);
+
+    vTaskDelay(5);
+    read_all(2, 0);
+    // for (int i = 0; i < 20; i++) {
+    //     ESP_LOGI(TAG, "Read data %d", rx_data[i]);
     // }
+
     // wsg_data r = interpret_read_data(rx_data)[0];
-    // ESP_LOGI(TAG, "Time: %llu", r.time);
-    // for (int i = 0; i < 3; i++) {
-    //     ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)r.wsgs[i]);
-    // }
-    // ESP_LOGI(TAG, "Initialized SPI Flash");
+    //  ESP_LOGI(TAG, "Time: %llu", r.time);
+    //  for (int i = 0; i < 3; i++) {
+    //      ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)r.wsgs[i]);
+    ESP_LOGI(TAG, "Initialized SPI Flash");
 }
