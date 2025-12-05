@@ -4,7 +4,7 @@
 #include <cstdlib> // rand, srand
 #include <cstring> // memset
 #include <format>
-#include <inttypes.h> // PRIu64 if you prefer
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>

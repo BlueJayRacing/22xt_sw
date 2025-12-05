@@ -136,7 +136,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint32_t>& wsgs)
     return output;
 }
 
-esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
+esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
     std::vector<uint8_t> tx_data = format_send_data(wsgs);
@@ -282,18 +282,9 @@ esp_err_t WSG_MEM::reset(uint32_t last_page, uint16_t last_column)
         ESP_LOGE(TAG, "Failed to update metadata.");
     }
 }
-
-esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsg_data)
+esp_err_t WSG_MEM::loop_write(uint32_t& page_addr, uint16_t& column_addr)
 {
-    esp_err_t ret;
-    init();
-    uint32_t page_addr;
-    uint16_t column_addr;
-
-    read_and_interpret_meta(page_addr, column_addr);
-
-    f((i % METADATA_UPDATE_INT) == 0 && i != 0)
-    {
+    for ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
         update_meta(page_addr, column_addr);
         wait_for_ready();
     }
@@ -307,9 +298,32 @@ esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsg_data)
         ESP_LOGE(TAG, "Page out of bounds :(. Addr: %0x", page_addr);
         return;
     } else {
-        cont_write(wsgs, i, column_addr);
+        ret = write(wsgs, i, column_addr);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to write data: %d", ret);
+            return ret;
+        }
     }
     column_addr += (CHUNK_SIZE);
-    wait_for_ready();
-    vTaskDelay(2);
+    return ret;
+}
+esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
+{
+
+    // cont_write assumes t
+    esp_err_t ret;
+    init();
+    uint32_t page_addr;
+    uint16_t column_addr;
+
+    read_and_interpret_meta(page_addr, column_addr);
+    for (int i = 0; i < 16; i++) // condition is while data is being read? not sure how to do yet
+    {
+        wait_for_ready();
+        vTaskDelay(2);
+        ret = loop_write(page_addr, column_addr);
+        if (ret != ESP_OK) {
+            return ret;
+        }
+    }
 }
