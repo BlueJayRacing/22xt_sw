@@ -3,30 +3,34 @@
 #include <cstdint>
 #include <cstdlib> // rand, srand
 #include <cstring> // memset
-#include <format>
+
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
 #include <sys/time.h> // gettimeofday
 #include <vector>
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include "test.hpp"
+
 #include <fstream>
 #include <iostream>
 
 #include "esp_check.h"
 #include "esp_event.h"
+#include <esp_system.h>
 #include "esp_http_client.h"
 #include "esp_log.h"
 
-#include <w25n04kv.hpp>
-W25N04KV spi_flash_;
+#include "w25n04kv.hpp"
+#include "wsg_mem.hpp"
+static const char* TAG = "main";
 
 WSG_MEM::WSG_MEM() {}
 
@@ -77,6 +81,7 @@ esp_err_t WSG_MEM::init()
     wait_for_ready();
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
+    return ret;
 }
 
 std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data)
@@ -165,6 +170,8 @@ esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr)
     // read first page and figure out what last page/column is _
     ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", page_addr, column_addr);
     esp_err_t ret;
+    ret = read_and_interpret_meta(page_addr, column_addr);
+    wait_for_ready();
     std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE);
     // std::ofstream Data("wsgdata.csv");
     // Data << "Time, WSG1, WSG2, WSG3 \n";
@@ -241,8 +248,8 @@ esp_err_t WSG_MEM::read_meta(std::vector<uint8_t>& rx_data)
 esp_err_t WSG_MEM::read_and_interpret_meta(uint32_t& page_addr, uint16_t& column_addr)
 {
     esp_err_t ret;
-    update_meta(page_addr, column_addr);
-    wait_for_ready();
+    // update_meta(page_addr, column_addr);
+    // wait_for_ready();
 
     std::vector<uint8_t> metadata(METADATA_SIZE);
     ret = read_meta(metadata);
@@ -251,7 +258,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta(uint32_t& page_addr, uint16_t& column
         ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
     }
 
-    interpret_meta_data(rx_data, page_addr, column_addr);
+    interpret_meta_data(metadata, page_addr, column_addr);
     ESP_LOGI(TAG, "Metadata: Page address: %u, Column address: %u", page_addr, column_addr);
     return ret;
 }
@@ -264,7 +271,7 @@ esp_err_t WSG_MEM::reset(uint32_t last_page, uint16_t last_column)
     uint16_t column_addr;
     read_and_interpret_meta(page_addr, column_addr);
 
-    last_block = page_addr / block_size;
+    int last_block = page_addr / block_size;
 
     for (int i = 0; i < last_block + 1; i++) {
         spi_flash_.enableWrite();
@@ -282,9 +289,9 @@ esp_err_t WSG_MEM::reset(uint32_t last_page, uint16_t last_column)
         ESP_LOGE(TAG, "Failed to update metadata.");
     }
 }
-esp_err_t WSG_MEM::loop_write(uint32_t& page_addr, uint16_t& column_addr)
+esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, uint32_t& page_addr, uint16_t& column_addr, int i)
 {
-    for ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
+    if ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
         update_meta(page_addr, column_addr);
         wait_for_ready();
     }
@@ -321,9 +328,10 @@ esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
     {
         wait_for_ready();
         vTaskDelay(2);
-        ret = loop_write(page_addr, column_addr);
+        ret = indiv_write(wsg_data, page_addr, column_addr, i);
         if (ret != ESP_OK) {
             return ret;
         }
     }
+    return ret;
 }
