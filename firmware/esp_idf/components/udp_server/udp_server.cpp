@@ -76,6 +76,8 @@ esp_err_t UdpServer::initialize_wifi_connection() {
 }
 
 esp_err_t UdpServer::initialize_socket() {
+    esp_err_t err;
+    BaseType_T ferr;
     esp_event_loop_args_t sender_loop_args = {
         .queue_size = 10,
         .task_name = "sender event",
@@ -83,13 +85,23 @@ esp_err_t UdpServer::initialize_socket() {
         .task_stack_size = 4096,
         .task_core_id = tskNO_AFFINITY
     };
-
-    ESP_ERROR_CHECK(esp_event_loop_create(&sender_loop_args, &sender_loop_handle));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this));
+    err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle)
+    if(err!=ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to create the event loop: %s", esp_err_to_name_r(err));
+    }
+    err = esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
+    if(err!=ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name_r(err));
+    }
 
     ESP_LOGI(TAG, "Starting the listener thread");
-    xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
-
+    ferr = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    if(ferr!=pdPASS)
+    {
+        ESP_LOGE(TAG, "Could not allocate required memory");
+    }
     return ESP_OK;
 }
 
@@ -98,7 +110,7 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
         ESP_LOGE(TAG, "Published message size is too long");
         return ESP_FAIL;
     }
-    
+    esp_err_t err;
     Message * msg = new Message();
     memset(msg, 0, sizeof(Message));
     msg->timestamp = timestamp_;
@@ -106,9 +118,12 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     msg->payload_len = buff_size;
     ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg->payload_len);
     msg->addr = dest_addr;
-
-    ESP_ERROR_CHECK(esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5));
-
+    
+    err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
+    if(err!=ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name_r(err));
+    }
     return ESP_OK;
 }
 
@@ -151,8 +166,10 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
             vTaskDelay(pdMS_TO_TICKS(2000));
             continue;
         }
+        BaseType_t ferr;
 
         while (1) {
+            vTaskDelay(10);
             ESP_LOGI(TAG, "Starting to recv message");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
@@ -167,7 +184,12 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
             msg->timestamp = get_timestamp();
             msg->payload_len = len;
             
-            xQueueSend(server->recv_queue, (void *) &msg, 0);
+            ferr = xQueueSend(server->recv_queue, (void *) &msg, 0);
+
+            if(ferr!=pdPASS)
+            {
+                ESP_LOGW(TAG, "Queue is full!");
+            }
 
             // std::fill_n(buf, 20, 0);
             vTaskDelay(10);
