@@ -1,17 +1,17 @@
 {
   "idf.openOcdConfigs": [
-    "board/esp32c6-builtin.cfg"
+    "board/esp32s3-builtin.cfg"
   ],
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM0",
+  "idf.port": "/dev/ttyACM1",
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32c6",
-    "OPENOCD_USB_ADAPTER_LOCATION": "1-2"
+    "IDF_TARGET": "esp32s3",
+    "OPENOCD_USB_ADAPTER_LOCATION": "7-1"
   },
   "clangd.path": "/home/cyanbrown/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
   "clangd.arguments": [
     "--background-index",
     "--query-driver=**",
-    "--compile-commands-dir=/home/cyanbrown/projects/22xt_sw/firmware/esp_idf/test/udp_client_test/build"
+    "--compile-commands-dir=/home/cyanbrown/projects/22xt_sw/firmware/esp_idf/test/udp_server_test/build"
   ]
 }

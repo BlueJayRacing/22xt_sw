@@ -1,8 +1,8 @@
-#include "udp_client.hpp"
+#include "udp_server.hpp"
 #include <lockGuard.hpp>
 #include <algorithm>
 
-static const char* TAG = "udp_client";
+static const char* TAG = "udp_server";
 
 ESP_EVENT_DEFINE_BASE(SENDER_EVENT_BASE);
 
@@ -13,22 +13,20 @@ uint64_t get_timestamp() {
     return (int64_t) time.tv_sec * 1000000L + (int64_t) time.tv_usec;
 }
 
-UdpClient::UdpClient() {
+UdpServer::UdpServer() {
     recv_queue = xQueueCreate(10, sizeof(Message *));
+
+    // ESP_EVENT_DECLARE_BASE(SENDER_EVENT_BASE);
 }
 
-UdpClient::~UdpClient() {
-    // Message * msg;
-    // while(xQueueReceive(recv_queue, msg, 0)) {
-    //     delete &msg;
+UdpServer::~UdpServer() {
+    // Message msg;
+    // while(xQueueReceive(recv_queue, pmsg, 0)) {
+    //     Message * pmsg = &msg
+    //     delete pmsg;
     // }
 
     esp_event_loop_delete(sender_loop_handle);
-}
-
-bool UdpClient::is_wifi_connected() {
-    wifi_ap_record_t ap_rec;
-    return esp_wifi_sta_get_ap_info(&ap_rec) == ESP_OK;
 }
 
 static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -52,43 +50,24 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
     }
 }
 
-esp_err_t UdpClient::ensure_wifi_connection(int max_attempts) {
-    esp_err_t err = ESP_OK;
-    wifi_ap_record_t ap_rec;
-    err = esp_wifi_sta_get_ap_info(&ap_rec);
-
-    for (int i = 0; i < max_attempts; i++) {
-        if (err == ESP_OK) {
-            return err;
-        }
-
-        esp_wifi_connect();
-        err = esp_wifi_sta_get_ap_info(&ap_rec);
-        vTaskDelay(50);
-    }
-
-    ESP_LOGE(TAG, "Cannot connect to wifi");
-    return err;
-}
-
-esp_err_t UdpClient::initialize_wifi_connection() {
+esp_err_t UdpServer::initialize_wifi_connection() {
     nvs_flash_init();
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
+    esp_netif_create_default_wifi_ap();
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&wifi_initiation);
-    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL);
+    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, this);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
     wifi_config_t wifi_configuration = {
-        .sta = {
+        .ap = {
             .ssid = "baja",
-            }};
-    esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
-    esp_wifi_set_mode(WIFI_MODE_STA);
+            .max_connection = 5
+        }};
+    esp_wifi_set_config(WIFI_IF_AP, &wifi_configuration);
+    esp_wifi_set_mode(WIFI_MODE_AP);
     esp_wifi_start();
-
-    ensure_wifi_connection(5);
+    esp_wifi_connect();
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     ESP_LOGI(TAG, "wifi initialized");
@@ -96,13 +75,9 @@ esp_err_t UdpClient::initialize_wifi_connection() {
     return ESP_OK;
 }
 
-esp_err_t UdpClient::initialize_socket() {
-    esp_err_t err = ensure_wifi_connection(10);
-    if (err != ESP_OK) {
-        return err;
-    }
-
+esp_err_t UdpServer::initialize_socket() {
     // send_queue = xQueueCreate(10, sizeof(Message *));
+
     esp_event_loop_args_t sender_loop_args = {
         .queue_size = 10,
         .task_name = "sender event",
@@ -114,13 +89,14 @@ esp_err_t UdpClient::initialize_socket() {
     ESP_ERROR_CHECK(esp_event_loop_create(&sender_loop_args, &sender_loop_handle));
     ESP_ERROR_CHECK(esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this));
 
-    xTaskCreate(udpListenerWorker, "receiver thread", 8192, (void *) this, 5, NULL);
+    ESP_LOGI(TAG, "Starting the listener thread");
+    xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
     xTaskCreate(send_event_loop_task, "send event loop task", 4096, (void *) this, 5, NULL);
 
     return ESP_OK;
 }
 
-esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> buf, size_t buff_size) {    
+esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> buf, size_t buff_size, sockaddr_in dest_addr) {    
     // size_t true_size = std::max(buff_size, (size_t) 20);
     
     Message * msg = new Message();
@@ -128,13 +104,15 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> b
     msg->timestamp = timestamp_;
     msg->payload = buf;
     msg->payload_len = buff_size;
+    ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg->payload_len);
+    msg->addr = dest_addr;
 
     ESP_ERROR_CHECK(esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5));
 
     return ESP_OK;
 }
 
-// void UdpClient::udpSenderWorker() {
+// void UdpServer::udpSenderWorker() {
 //     lockGuard guard(mut);
 
 //     Message * msg = send_queue->dequeue();
@@ -147,16 +125,26 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> b
 //     }
 // }
 
-void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data) {
+void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data) {
     ESP_LOGI(TAG, "called send event handler");
-    UdpClient * client = (UdpClient *) handler_arg;
+    char addr_str[128];
+    UdpServer * server = (UdpServer *) handler_arg;
     Message * msg = (Message *) event_data;
 
-    client->socket_handler_.send(msg->payload, msg->payload_len);
+    inet_ntoa_r(msg->addr.sin_addr, addr_str, sizeof(addr_str) - 1);
+    ESP_LOGI(TAG, "message payload len %s, %d", addr_str, msg->payload_len);
+
+
+    for (int i = 0; i < msg->payload_len; i++) {
+        ESP_LOGE(TAG, "DATA SEND %d: %d", i, msg->payload[i]);
+    }
+
+    server->socket_handler_.send(msg->payload, msg->payload_len, msg->addr);
 }
 
-Message * UdpClient::recv_data() {
-    Message * msg;
+Message * UdpServer::recv_data() {
+    ESP_LOGI(TAG, "requested message");
+    Message * msg = new Message();
     if (xQueueReceive(recv_queue, &msg, 10) == pdPASS) {
         ESP_LOGI(TAG, "returned message");
         return msg;
@@ -165,47 +153,46 @@ Message * UdpClient::recv_data() {
     return nullptr;
 }
 
-void UdpClient::udpListenerWorker(void * pvParamter) {
+void UdpServer::udpListenerWorker(void * pvParamter) {
 
-    UdpClient * client = (UdpClient *) pvParamter;
+    UdpServer * server = (UdpServer *) pvParamter;
 
     while (1) {
-        client->socket_handler_.init(PORT, HOST_IP_ADDR);
+        server->socket_handler_.init(PORT);
 
         while (1) {
-            ESP_LOGI(TAG, "starting to recv msg");
+            ESP_LOGI(TAG, "Starting to recv message");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
-            int len = client->socket_handler_.recv(msg);
+            int len = server->socket_handler_.recv(msg);
             if(len < 0) {
                 delete msg;
                 continue;
             }
 
-            ESP_LOGI(TAG, "adding message to listener q");
+            ESP_LOGI(TAG, "adding message to q");
+            // memcpy(msg->buf, buf, sizeof(buf));
             msg->timestamp = get_timestamp();
             msg->payload_len = len;
-
-
-            for (int i = 0; i < msg->payload_len; i++) {
-                ESP_LOGE(TAG, "DATA SEND %d: %d", i, msg->payload[i]);
-            }
             
-            xQueueSend(client->recv_queue, (void *) &msg, 0);
+            xQueueSend(server->recv_queue, (void *) &msg, 0);
 
+            // std::fill_n(buf, 20, 0);
             vTaskDelay(10);
         }
 
-        client->socket_handler_.close_sock();
+        server->socket_handler_.close_sock();
+
     }
     vTaskDelete(NULL);
+
 }
 
-void UdpClient::send_event_loop_task(void * pvParameter) {
-    UdpClient * client = (UdpClient *) pvParameter;
+void UdpServer::send_event_loop_task(void * pvParameter) {
+    UdpServer * server = (UdpServer *) pvParameter;
 
     while(1) {
-        esp_event_loop_run(client->sender_loop_handle, portMAX_DELAY);
+        esp_event_loop_run(server->sender_loop_handle, portMAX_DELAY);
         vTaskDelay(10);
     }
 }

@@ -1,7 +1,8 @@
-#ifndef udp_client
+#ifndef udp_server
 
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 
 #include "esp_wifi.h"
 #include "esp_log.h"
@@ -20,13 +21,13 @@
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
 
-#include "client_socket_handler.hpp"
+#include "server_socket_handler.hpp"
 
-// #define PORT 3333
-// #define HOST_IP_ADDR "192.168.4.1"
+#define PORT 3333
+#define HOST_IP_ADDR "192.168.4.1"
 
-static const int PORT = 3333;
-static char* HOST_IP_ADDR = "192.168.4.1";
+// static const int PORT = 3333;
+// static const char* HOST_IP_ADDR = "192.168.4.1";
 
 void sub_timeval(struct timeval t1, struct timeval t2, struct timeval *td);
 void add_timeval(struct timeval t1, struct timeval t2, struct timeval *td);
@@ -39,22 +40,21 @@ enum event_ids : uint32_t {
     RECEIVER_EVENT_ID
 };
 
-class UdpClient {
+class UdpServer {
     public:
-        UdpClient();
-        ~UdpClient();
+        UdpServer();
+        ~UdpServer();
 
         bool is_wifi_connected();
         esp_err_t initialize_wifi_connection();
         esp_err_t initialize_socket();
-        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, 30> buf, size_t buff_size);
+        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, 30> buf, size_t buff_size, struct sockaddr_in dest_addr);
         Message * recv_data();
         static void udpListenerWorker(void *);
         static void send_event_loop_task(void *);
         // void udpSenderWorker();
         static void udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
         void udp_recv_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
-
 
     private:
         esp_err_t ensure_wifi_connection(int max_attempts);

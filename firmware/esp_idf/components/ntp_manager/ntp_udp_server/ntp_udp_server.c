@@ -72,7 +72,7 @@ static void udp_server_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
-        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+        struct sockaddr_in source_addr; // Large enough for both IPv4 or IPv6
         socklen_t socklen = sizeof(source_addr);
 
         struct timeval recv_time;
@@ -160,7 +160,7 @@ void wifi_connection()
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
     wifi_config_t wifi_configuration = {
         .ap = {
-            .ssid = "bajatest",
+            .ssid = "baja",
             .max_connection = 5
         }};
     esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_configuration);

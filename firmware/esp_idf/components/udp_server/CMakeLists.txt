@@ -1,4 +1,4 @@
-idf_component_register( SRCS "udp_client.cpp" "client_socket_handler.cpp"
+idf_component_register( SRCS "udp_server.cpp" "server_socket_handler.cpp"
                         INCLUDE_DIRS "include"
                         REQUIRES 
                             driver

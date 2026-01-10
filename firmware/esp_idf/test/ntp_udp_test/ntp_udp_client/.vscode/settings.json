@@ -1,7 +1,7 @@
 {
   "idf.portWin": "COM6",
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM2",
+  "idf.port": "/dev/ttyACM0",
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
