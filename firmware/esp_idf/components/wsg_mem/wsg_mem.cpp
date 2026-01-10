@@ -4,14 +4,14 @@
 #include <cstdlib> // rand, srand
 #include <cstring> // memset
 
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
 #include <sys/time.h> // gettimeofday
 #include <vector>
-#include <driver/gpio.h>
-#include <driver/spi_master.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -24,9 +24,9 @@
 
 #include "esp_check.h"
 #include "esp_event.h"
-#include <esp_system.h>
 #include "esp_http_client.h"
 #include "esp_log.h"
+#include <esp_system.h>
 
 #include "w25n04kv.hpp"
 #include "wsg_mem.hpp"
@@ -164,7 +164,7 @@ esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16
     return ESP_OK;
 }
 
-esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr)
+esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data)
 {
 
     // read first page and figure out what last page/column is _
@@ -172,9 +172,9 @@ esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr)
     esp_err_t ret;
     ret = read_and_interpret_meta(page_addr, column_addr);
     wait_for_ready();
-    std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE);
-    // std::ofstream Data("wsgdata.csv");
-    // Data << "Time, WSG1, WSG2, WSG3 \n";
+    // std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE);
+    //  std::ofstream Data("wsgdata.csv");
+    //  Data << "Time, WSG1, WSG2, WSG3 \n";
     for (uint32_t i = 1; i < page_addr + 1; i++) {
         ret = spi_flash_.readPage(rx_data, i, column_addr);
         if (ret != ESP_OK) {
@@ -192,8 +192,6 @@ esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr)
             for (int j = 0; j < 3; j++) {
                 ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
             }
-            // Data << std::to_string(w.time) << "," << std::to_string(w.wsgs[0]) << "," << std::to_string(w.wsgs[1])
-            //      << "," << std::to_string(w.wsgs[2]) << "\n";
         }
         wait_for_ready();
     }
@@ -335,3 +333,4 @@ esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
     }
     return ret;
 }
+esp_err_t WSG_MEM::read_and_send() { std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE); }
