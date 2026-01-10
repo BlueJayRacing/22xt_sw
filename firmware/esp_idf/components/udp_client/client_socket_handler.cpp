@@ -54,24 +54,19 @@ int SocketHandler::recv(Message * msg) {
     sockaddr_in source_addr;
     socklen_t size = sizeof(sockaddr_in);
 
-    // void * test = msg->payload.data();
-    // size_t s = msg->payload.size();
     // int server_sock = accept(sock, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
     // if (server_sock < 0) {
     //     ESP_LOGI(TAG, "socket doesn't have any data");
     //     return -1;
     // }
 
-    ESP_LOGI(TAG, "starting recvfrom");
-    // int len = 1;
     int len = recvfrom(sock, msg->payload.data(), msg->payload.size(), 0, (struct sockaddr *)&source_addr, &size);
     if (len < 0) {
         ESP_LOGI(TAG, "Received nothing from socket");
         return -1;
     }
 
-    // msg->payload = buf;
-    ESP_LOGI(TAG, "message recvfrom");
+    ESP_LOGI(TAG, "Message received from socket");
     msg->payload_len = len;
 
     return len;

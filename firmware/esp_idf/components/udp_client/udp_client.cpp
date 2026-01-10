@@ -53,9 +53,8 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
 }
 
 esp_err_t UdpClient::ensure_wifi_connection(int max_attempts) {
-    esp_err_t err = ESP_OK;
     wifi_ap_record_t ap_rec;
-    err = esp_wifi_sta_get_ap_info(&ap_rec);
+    esp_err_t err = esp_wifi_sta_get_ap_info(&ap_rec);
 
     for (int i = 0; i < max_attempts; i++) {
         if (err == ESP_OK) {
@@ -110,10 +109,23 @@ esp_err_t UdpClient::initialize_socket() {
         .task_core_id = tskNO_AFFINITY
     };
 
-    ESP_ERROR_CHECK(esp_event_loop_create(&sender_loop_args, &sender_loop_handle));
-    ESP_ERROR_CHECK(esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this));
+    err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle);
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create the sender event loop: %s", esp_err_to_name_r(err));
+        return err;
+    }
 
-    xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    err = esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register the sender event loop: %s", esp_err_to_name_r(err));
+        return err;
+    }
+
+    Basetype_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    if (rtos_err != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create listener worker task");
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
@@ -130,23 +142,25 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     msg->payload = buf;
     msg->payload_len = buff_size;
 
-    ESP_ERROR_CHECK(esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5));
+    esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name_r(err));
+    }
 
     return ESP_OK;
 }
 
 void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data) {
-    ESP_LOGI(TAG, "called send event handler");
     UdpClient * client = (UdpClient *) handler_arg;
     Message * msg = (Message *) event_data;
 
+    ESP_LOGI(TAG, "Sending message");
     client->socket_handler_.send(msg->payload, msg->payload_len);
 }
 
 Message * UdpClient::recv_data() {
     Message * msg;
     if (xQueueReceive(recv_queue, &msg, 10) == pdPASS) {
-        ESP_LOGI(TAG, "returned message");
         return msg;
     }
 
@@ -160,14 +174,13 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
     while (1) {
         esp_err_t err = client->socket_handler_.init(PORT, HOST_IP_ADDR);
         if(err != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to initialize socket");
+            ESP_LOGW(TAG, "Failed to initialize socket: %s", esp_err_to_name_r(err));
             vTaskDelay(pdMS_TO_TICKS(2000));
             continue;
         }
 
         while (1) {
             vTaskDelay(10);
-            ESP_LOGI(TAG, "starting to recv msg");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
             int len = client->socket_handler_.recv(msg);
@@ -176,16 +189,13 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
                 continue;
             }
 
-            ESP_LOGI(TAG, "adding message to listener q");
+            ESP_LOGI(TAG, "Adding received message to queue");
             msg->timestamp = get_timestamp();
             msg->payload_len = len;
-
-
-            for (int i = 0; i < msg->payload_len; i++) {
-                ESP_LOGE(TAG, "DATA SEND %d: %d", i, msg->payload[i]);
-            }
             
-            xQueueSend(client->recv_queue, (void *) &msg, 0);
+            if(xQueueSend(client->recv_queue, (void *) &msg, 0) != pdPASS) {
+                ESP_LOGW(TAG, "Failed to add received message to queue");
+            }
         }
 
         client->socket_handler_.close_sock();
