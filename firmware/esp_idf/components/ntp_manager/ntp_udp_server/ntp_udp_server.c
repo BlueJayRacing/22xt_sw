@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ntp_udp_server.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -13,7 +14,6 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "esp_mac.h"
-#include "esp_eth.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "esp_http_client.h"
@@ -37,7 +37,6 @@ static const char *TAG = "UDP SOCKET SERVER";
 static void udp_server_task(void *pvParameters)
 {
     char rx_buffer[128];
-    char stamp[3];
 
     char addr_str[128];
     int addr_family = (int)pvParameters;
@@ -73,13 +72,25 @@ static void udp_server_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
-        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+        struct sockaddr_in source_addr; // Large enough for both IPv4 or IPv6
         socklen_t socklen = sizeof(source_addr);
+
+        struct timeval recv_time;
+        int64_t recv_time_i;
+
+        struct timeval sent_time;
+        int64_t sent_time_i;
+
+        char recv_strftime[64];
+        char sent_strftime[64];
 
         while (1)
         {
             ESP_LOGI(TAG, "Waiting for data");
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+            gettimeofday(&recv_time, NULL);
+            recv_time_i = (int64_t) recv_time.tv_sec * 1000000L + (int64_t) recv_time.tv_usec;
+            sprintf(recv_strftime, "%lld", recv_time_i);
 
             if (len > 0)
             {
@@ -89,11 +100,16 @@ static void udp_server_task(void *pvParameters)
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
                 ESP_LOGI(TAG, "%s", rx_buffer);
 
-                // if (strcmp(stamp, "T1") {
-                //     sendto(sock, )
-                // }
+                sendto(sock, recv_strftime, strlen(recv_strftime), 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                gettimeofday(&sent_time, NULL);
+                sent_time_i = (int64_t) sent_time.tv_sec * 1000000L + (int64_t) sent_time.tv_usec;
 
-                sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                sprintf(sent_strftime, "%lld", sent_time_i);
+
+                sendto(sock, sent_strftime, strlen(sent_strftime), 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                
+                gettimeofday(&sent_time, NULL);
+                ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t) sent_time.tv_sec, (int64_t) sent_time.tv_usec);
             }
             else
             {
@@ -144,7 +160,7 @@ void wifi_connection()
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
     wifi_config_t wifi_configuration = {
         .ap = {
-            .ssid = "bajatest",
+            .ssid = "baja",
             .max_connection = 5
         }};
     esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_configuration);
@@ -153,25 +169,11 @@ void wifi_connection()
     esp_wifi_connect();
 }
 
-void app_main(void)
-{
+void init_server_wifi() {
     wifi_connection();
     vTaskDelay(5000 / portTICK_PERIOD_MS);
+}
+
+void start_server_timesync_loop(void) {
     xTaskCreate(udp_server_task, "udp_server", 4096, (void *)AF_INET, 5, NULL);
-
-    // esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG();
-    // esp_netif_sntp_init(&config);
-    // esp_netif_sntp_start();
-
-
-    // struct timeval tv_now;
-
-    // while (1) {
-    //     vTaskDelay(100);
-
-    //     gettimeofday(&tv_now, NULL);
-    //     int64_t time_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
-
-    //     ESP_LOGI(TAG, "%lld", time_us);
-    // }
 }

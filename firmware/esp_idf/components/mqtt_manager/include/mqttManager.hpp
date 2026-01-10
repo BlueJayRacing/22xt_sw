@@ -12,7 +12,7 @@
 
 typedef struct mqtt_client {
     esp_mqtt_client_handle_t client_handle;
-    QueueHandle_t rec_queue;
+    QueueHandle_t Frec_queue;
     EventGroupHandle_t conn_event;
 
     mqtt_client(void) : client_handle(NULL), rec_queue(NULL), conn_event(NULL){};
@@ -72,5 +72,7 @@ class mqttManager {
     static mqttManager* instance_;
     static EventGroupHandle_t wifi_conn_group_;
 };
+
+
 
 #endif
