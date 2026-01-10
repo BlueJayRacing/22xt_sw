@@ -88,12 +88,12 @@ esp_err_t UdpServer::initialize_socket() {
     err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle)
     if(err!=ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to create the event loop: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to create the event loop: %s", esp_err_to_name(err));
     }
     err = esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
     if(err!=ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name(err));
     }
 
     ESP_LOGI(TAG, "Starting the listener thread");
@@ -122,7 +122,7 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
     if(err!=ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name(err));
     }
     return ESP_OK;
 }
