@@ -63,7 +63,7 @@ class UdpClient {
         esp_event_loop_handle_t sender_loop_handle;
 
         TaskHandle_t * recv_task_handle;
-
+        
         SocketHandler socket_handler_;
 };
 
