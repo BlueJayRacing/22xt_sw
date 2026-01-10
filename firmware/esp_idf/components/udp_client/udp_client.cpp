@@ -111,17 +111,17 @@ esp_err_t UdpClient::initialize_socket() {
 
     err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle);
     if(err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create the sender event loop: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to create the sender event loop: %s", esp_err_to_name(err));
         return err;
     }
 
     err = esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
     if(err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register the sender event loop: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to register the sender event loop: %s", esp_err_to_name(err));
         return err;
     }
 
-    Basetype_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    BaseType_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
     if (rtos_err != pdPASS) {
         ESP_LOGE(TAG, "Failed to create listener worker task");
         return ESP_FAIL;
@@ -144,7 +144,7 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
 
     esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name_r(err));
+        ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
     }
 
     return ESP_OK;
@@ -174,7 +174,7 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
     while (1) {
         esp_err_t err = client->socket_handler_.init(PORT, HOST_IP_ADDR);
         if(err != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to initialize socket: %s", esp_err_to_name_r(err));
+            ESP_LOGW(TAG, "Failed to initialize socket: %s", esp_err_to_name(err));
             vTaskDelay(pdMS_TO_TICKS(2000));
             continue;
         }
