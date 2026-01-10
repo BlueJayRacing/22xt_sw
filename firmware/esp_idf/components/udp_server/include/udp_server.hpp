@@ -48,7 +48,7 @@ class UdpServer {
         bool is_wifi_connected();
         esp_err_t initialize_wifi_connection();
         esp_err_t initialize_socket();
-        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, 30> buf, size_t buff_size, struct sockaddr_in dest_addr);
+        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buff_size, struct sockaddr_in dest_addr);
         Message * recv_data();
         static void udpListenerWorker(void *);
         static void send_event_loop_task(void *);

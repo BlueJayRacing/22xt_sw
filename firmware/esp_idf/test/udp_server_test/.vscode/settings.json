@@ -3,7 +3,7 @@
     "board/esp32s3-builtin.cfg"
   ],
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM1",
+  "idf.port": "/dev/ttyACM0",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3",
     "OPENOCD_USB_ADAPTER_LOCATION": "7-1"

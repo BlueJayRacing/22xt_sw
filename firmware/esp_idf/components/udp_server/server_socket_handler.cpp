@@ -39,7 +39,7 @@ esp_err_t SocketHandler::init(int port) {
     return ESP_OK;
 }
 
-esp_err_t SocketHandler::send(std::array<uint8_t, 30> buf, size_t buf_len, struct sockaddr_in dest_addr) {
+esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buf_len, struct sockaddr_in dest_addr) {
     // lockGuard guard(mutex);
     if (buf_len > 30) {
         ESP_LOGE(TAG, "Invalid send buffer size of %d", buf_len);

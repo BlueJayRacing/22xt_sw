@@ -32,13 +32,13 @@ esp_err_t SocketHandler::init(int port, char * host_ip_addr) {
     return ESP_OK;
 }
 
-esp_err_t SocketHandler::send(std::array<uint8_t, 30> buf, size_t buf_len) {
+esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buf_len) {
     if (buf_len > 30) {
         ESP_LOGE(TAG, "Invalid send buffer size of %d", buf_len);
         return ESP_FAIL;
     }
 
-    // lockGuard guard(mutex);
+    lockGuard guard(mutex);
     int err = sendto(sock, buf.data(), buf_len, 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
     if(err < 0) {
@@ -50,13 +50,18 @@ esp_err_t SocketHandler::send(std::array<uint8_t, 30> buf, size_t buf_len) {
 }
 
 int SocketHandler::recv(Message * msg) {
-    // lockGuard guard(mutex);
+    lockGuard guard(mutex);
     sockaddr_in source_addr;
     socklen_t size = sizeof(sockaddr_in);
 
-    uint8_t buf[30];
     // void * test = msg->payload.data();
     // size_t s = msg->payload.size();
+    // int server_sock = accept(sock, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+    // if (server_sock < 0) {
+    //     ESP_LOGI(TAG, "socket doesn't have any data");
+    //     return -1;
+    // }
+
     ESP_LOGI(TAG, "starting recvfrom");
     // int len = 1;
     int len = recvfrom(sock, msg->payload.data(), msg->payload.size(), 0, (struct sockaddr *)&source_addr, &size);

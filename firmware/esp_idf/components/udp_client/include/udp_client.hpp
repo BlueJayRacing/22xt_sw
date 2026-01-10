@@ -47,7 +47,7 @@ class UdpClient {
         bool is_wifi_connected();
         esp_err_t initialize_wifi_connection();
         esp_err_t initialize_socket();
-        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, 30> buf, size_t buff_size);
+        esp_err_t publish_data(uint64_t timestamp, std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buff_size);
         Message * recv_data();
         static void udpListenerWorker(void *);
         static void send_event_loop_task(void *);

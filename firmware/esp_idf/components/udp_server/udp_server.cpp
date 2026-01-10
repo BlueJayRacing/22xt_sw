@@ -76,8 +76,6 @@ esp_err_t UdpServer::initialize_wifi_connection() {
 }
 
 esp_err_t UdpServer::initialize_socket() {
-    // send_queue = xQueueCreate(10, sizeof(Message *));
-
     esp_event_loop_args_t sender_loop_args = {
         .queue_size = 10,
         .task_name = "sender event",
@@ -91,13 +89,15 @@ esp_err_t UdpServer::initialize_socket() {
 
     ESP_LOGI(TAG, "Starting the listener thread");
     xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
-    xTaskCreate(send_event_loop_task, "send event loop task", 4096, (void *) this, 5, NULL);
 
     return ESP_OK;
 }
 
-esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> buf, size_t buff_size, sockaddr_in dest_addr) {    
-    // size_t true_size = std::max(buff_size, (size_t) 20);
+esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buff_size, sockaddr_in dest_addr) {    
+    if (buff_size > MESSAGE_MAX_LEN) {
+        ESP_LOGE(TAG, "Published message size is too long");
+        return ESP_FAIL;
+    }
     
     Message * msg = new Message();
     memset(msg, 0, sizeof(Message));
@@ -111,19 +111,6 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, 30> b
 
     return ESP_OK;
 }
-
-// void UdpServer::udpSenderWorker() {
-//     lockGuard guard(mut);
-
-//     Message * msg = send_queue->dequeue();
-//     int err = sendto(sock, msg->buf, msg->msg_len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-
-//     delete msg;
-
-//     if (err < 0) {
-//         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-//     }
-// }
 
 void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data) {
     ESP_LOGI(TAG, "called send event handler");
@@ -158,7 +145,12 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
     UdpServer * server = (UdpServer *) pvParamter;
 
     while (1) {
-        server->socket_handler_.init(PORT);
+        esp_err_t err = server->socket_handler_.init(PORT);
+        if(err != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to initialize socket");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            continue;
+        }
 
         while (1) {
             ESP_LOGI(TAG, "Starting to recv message");
@@ -187,14 +179,3 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
     vTaskDelete(NULL);
 
 }
-
-void UdpServer::send_event_loop_task(void * pvParameter) {
-    UdpServer * server = (UdpServer *) pvParameter;
-
-    while(1) {
-        esp_event_loop_run(server->sender_loop_handle, portMAX_DELAY);
-        vTaskDelay(10);
-    }
-}
-
-
