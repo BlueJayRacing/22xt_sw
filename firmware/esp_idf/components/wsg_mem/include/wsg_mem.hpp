@@ -22,7 +22,7 @@ class WSG_MEM {
     esp_err_t wait_for_ready(int timeout = 1000);
     esp_err_t init();
     esp_err_t write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr);
-    esp_err_t read_all(uint32_t page_addr, uint16_t column_addr);
+    esp_err_t read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data);
     esp_err_t update_meta(uint32_t page_addr, uint16_t column_addr);
     esp_err_t reset(uint32_t last_page, uint16_t last_column = 0);
     esp_err_t read_and_interpret_meta(uint32_t& page_addr, uint16_t& column_addr);

@@ -81,6 +81,11 @@ esp_err_t WSG_MEM::init()
     wait_for_ready();
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
+
+    // meta data initialization
+
+     ret = read_meta(metadata);
+     read_and_interpret_meta()
     return ret;
 }
 
@@ -251,7 +256,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta(uint32_t& page_addr, uint16_t& column
 
     std::vector<uint8_t> metadata(METADATA_SIZE);
     ret = read_meta(metadata);
-
+    wait_for_ready();
     for (int i = 0; i < 6; i++) {
         ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
     }
@@ -286,9 +291,11 @@ esp_err_t WSG_MEM::reset(uint32_t last_page, uint16_t last_column)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to update metadata.");
     }
+    return ret;
 }
 esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, uint32_t& page_addr, uint16_t& column_addr, int i)
 {
+    esp_err_t ret;
     if ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
         update_meta(page_addr, column_addr);
         wait_for_ready();
@@ -301,7 +308,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, uint32_t& page_addr,
     }
     if (page_addr >= W25N04KV::NUM_PAGES) {
         ESP_LOGE(TAG, "Page out of bounds :(. Addr: %0x", page_addr);
-        return;
+        return ESP_ERR_INVALID_SIZE;
     } else {
         ret = write(wsgs, i, column_addr);
         if (ret != ESP_OK) {
@@ -310,7 +317,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, uint32_t& page_addr,
         }
     }
     column_addr += (CHUNK_SIZE);
-    return ret;
+    return ESP_OK;
 }
 esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
 {
@@ -333,4 +340,4 @@ esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
     }
     return ret;
 }
-esp_err_t WSG_MEM::read_and_send() { std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE); }
+// esp_err_t WSG_MEM::read_and_send() { std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE); }

@@ -1,64 +1,28 @@
-#include <array>
-#include <bitset>
-#include <cstdint>
-#include <cstdlib> // rand, srand
-#include <cstring> // memset
-#include <format>
-#include <inttypes.h>
+#include <assert.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
 #include <stdio.h>
-#include <string.h>
-#include <string>
-#include <sys/time.h> // gettimeofday
-#include <vector>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
-#include "test.hpp"
-#include <fstream>
-#include <iostream>
-
-#include "esp_check.h"
-#include "esp_event.h"
-#include "esp_http_client.h"
-#include "esp_log.h"
+#include <test.hpp>
+#include <cstring>
 
 #include <w25n04kv.hpp>
 
-#define SPI2_MOSI_PIN       18
-#define SPI2_MISO_PIN       20
-#define SPI2_SCLK_PIN       19
-#define METADATA_UPDATE_INT 5
+#define SPI2_MOSI_PIN 18
+#define SPI2_MISO_PIN 20
+#define SPI2_SCLK_PIN 19
+
 W25N04KV spi_flash_;
-#define CHUNK_SIZE    20
-#define METADATA_SIZE 6
 
 static const char* TAG = "main";
 
-struct wsg_data {
-    uint64_t time;
-    std::array<uint32_t, 3> wsgs;
-};
-esp_err_t wait_for_ready(int timeout = 1000)
+extern "C" void app_main(void)
 {
-    int i = 0;
-    w25n04kv_device_status_t status;
+    // Test test(ESP_LOG_DEBUG);
 
-    while (i < timeout) {
-        spi_flash_.readStatus(&status);
-        if (status.is_busy == 0) {
-            vTaskDelay(10);
-            return ESP_OK;
-        }
-        vTaskDelay(10);
-        i += 10;
-    }
-    return ESP_ERR_TIMEOUT;
-}
-void init()
-{
+    // test.testW25N04KV();
+
+    esp_err_t ret;
+    
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
@@ -70,280 +34,71 @@ void init()
 
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
-    w25n04kv_init_param_t flash;
+    w25n04kv_init_param_t flash_init_params;
+    flash_init_params.cs_pin = GPIO_NUM_1;
+    flash_init_params.wp_pin = GPIO_NUM_NC;
+    flash_init_params.spi_host = SPI2_HOST;
 
-    flash.cs_pin   = GPIO_NUM_1;
-    flash.wp_pin   = GPIO_NUM_NC;
-    flash.spi_host = SPI2_HOST;
-    esp_err_t ret;
-    ret = spi_flash_.init(flash);
+    ESP_LOGI(TAG, "Initialized SPI Bus");
+
+    vTaskDelay(100);
+
+    ret = spi_flash_.init(flash_init_params);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI Flash: %d", ret);
+        return;
     }
+
+    std::vector<uint8_t> tx_data(100);
+    std::vector<uint8_t> rx_data(100);
+
+    std::srand(esp_cpu_get_cycle_count());
+
+    for (int i = 0; i < 100; i++) {
+        tx_data.at(i) = rand() % 255;
+    }
+
     spi_flash_.reset();
 
     spi_flash_.isCorrectDevice();
     spi_flash_.enableWrite();
-    wait_for_ready();
+
+    vTaskDelay(2);
+
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
-}
 
-std::vector<wsg_data> interpret_read_data(std::vector<uint8_t>& rx_data)
-{
-    int len = rx_data.size() / CHUNK_SIZE;
-    std::vector<wsg_data> wsgs(len);
-    for (int l = 0; l < len; l++) {
-        int base = l * CHUNK_SIZE;
-        wsg_data w;
-        w.time = 0;
-        for (int i = 0; i < 8; i++) {
-            w.time |= ((uint64_t)rx_data[base + i] << ((7 - i) * 8));
-        }
-        uint32_t wsg = 0;
-        int ij       = base + 8;
-        for (int i = 0; i < 3; i++) {
-            wsg = 0;
-            for (int j = 0; j < 4; j++) {
-                ij = base + 8 + (4 * i) + j;
-                wsg |= ((uint32_t)rx_data[ij] << ((3 - j) * 8));
-            }
-            w.wsgs[i] = wsg;
-        }
-        wsgs[l] = w;
-    }
+    uint32_t page_address = 0b00000010000000000; //std::rand() % W25N04KV::NUM_PAGES;
 
-    return wsgs;
-}
+    // 0xxxxx00
 
-std::vector<uint8_t> format_send_data(std::vector<uint32_t>& wsgs)
-{
-    //
-    // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
-    struct timeval cur_time;
-    gettimeofday(&cur_time, NULL);
-    uint64_t time;
+    ESP_LOGI(TAG, "Page address: %d", (int) page_address);
 
-    time = (uint64_t)cur_time.tv_sec * 1000000L + (uint64_t)cur_time.tv_usec;
-    ESP_LOGI(TAG, "Current time: %llu", time);
-    std::vector<uint8_t> output(CHUNK_SIZE);
+    ESP_LOGI(TAG, "Erasing page");
 
-    // splitting time into 8 bytes
-    for (int i = 0; i < 8; i++) {
-        output[i]     = (time >> ((7 - i) * 8)) & 0xFF;
-        std::string s = std::format("{:x}", output[i]);
-    }
-    // splitting wsg data
-    for (int i = 0; i < 3; i++) {
-        uint32_t wsg = wsgs[i];
-        int ij;
-        for (int j = 0; j < 4; j++) {
-            ij         = 8 + (4 * i) + j;
-            output[ij] = (wsg >> ((3 - j) * 8)) & 0xFF;
-        }
-    }
+    // spi_flash_.eraseBlock(page_address);// & 0x1FFC0);
 
-    return output;
-}
-
-esp_err_t cont_write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
-{
-
-    std::vector<uint8_t> tx_data = format_send_data(wsgs);
+    vTaskDelay(1);
 
     ESP_LOGI(TAG, "Writing page");
 
-    for (int i = 0; i < CHUNK_SIZE; i++) {
-        std::string s = std::format("{:x}", tx_data[i]);
-        ESP_LOGI(TAG, "Data in hex %s", s.c_str());
+    for (int i = 0; i < 100; i++) {
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
+        ESP_LOGI(TAG, "RX data %d", rx_data[i]);
     }
 
-    esp_err_t ret = spi_flash_.writePage(tx_data, page_addr);
+    spi_flash_.writePage(tx_data, page_address, 0);
 
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to write. :(. Page number: %lu, Column number %u, error %d", page_addr, column_addr, ret);
-        return ret;
-    }
+    spi_flash_.printStatusReg();
 
-    return ESP_OK;
-}
-
-esp_err_t read_all(uint32_t page_addr, uint16_t column_addr)
-{
-
-    // read first page and figure out what last page/column is _
-    ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", page_addr, column_addr);
-    esp_err_t ret;
-    std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE);
-    // std::ofstream Data("wsgdata.csv");
-    // Data << "Time, WSG1, WSG2, WSG3 \n";
-    for (uint32_t i = 1; i < page_addr + 1; i++) {
-        ret = spi_flash_.readPage(rx_data, i, column_addr);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "failed. :(). Page number %lu, error %d", i, ret);
+    int k = 1;
+    for (int i = 0; i < k; i++) {
+        vTaskDelay(5);
+        spi_flash_.readPage(rx_data, page_address);
+        for (int i = 0; i < 100; i++) {
+            ESP_LOGI(TAG, "Read data %d", rx_data[i]);
         }
-        ESP_LOGI(TAG, "Current read page number: %lu", i);
-        for (int j = 0; j < CHUNK_SIZE; j++) {
-            ESP_LOGI(TAG, "Read data %d", rx_data[j]);
-        }
-        std::vector<uint8_t> chunk(rx_data.begin(), rx_data.begin() + CHUNK_SIZE);
-        std::vector<wsg_data> wsgs = interpret_read_data(chunk);
-        for (wsg_data w : wsgs) {
-            ESP_LOGI(TAG, "Time: %llu", w.time);
-            for (int j = 0; j < 3; j++) {
-                ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
-            }
-            // Data << std::to_string(w.time) << "," << std::to_string(w.wsgs[0]) << "," << std::to_string(w.wsgs[1])
-            //      << "," << std::to_string(w.wsgs[2]) << "\n";
-        }
-        wait_for_ready();
-    }
-    return ESP_OK;
-}
-
-void interpret_meta_data(std::vector<uint8_t>& rx_data, uint32_t& page_addr, uint16_t& column_addr)
-{
-    page_addr   = 0;
-    column_addr = 0;
-
-    for (int i = 0; i < 4; i++) {
-        page_addr |= (uint32_t)rx_data[i] << ((3 - i) * 8);
-        // std::string s = std::format("{:x}", output[i]);
-    }
-    for (int i = 4; i < 6; i++) {
-        column_addr |= ((uint32_t)rx_data[i] << ((5 - i) * 8));
-        // std::string s = std::format("{:x}", output[i]);
-    }
-}
-
-esp_err_t update_meta(uint32_t page_addr, uint16_t column_addr)
-{
-    // 4+2 = 6
-    std::vector<uint8_t> tx_data(METADATA_SIZE);
-
-    // updating first page with metadata
-    for (int i = 0; i < 4; i++) {
-        tx_data[i] = (page_addr >> ((3 - i) * 8)) & 0xFF;
-        // std::string s = std::format("{:x}", output[i]);
-    }
-    for (int i = 0; i < 2; i++) {
-        tx_data[i + 4] = (column_addr >> ((1 - i) * 8)) & 0xFF;
-        // std::string s = std::format("{:x}", output[i]);
     }
 
-    esp_err_t ret = spi_flash_.writePage(tx_data, 0, 0);
-
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "AHHHHH. Failed writing metadata. Error %d", ret);
-    }
-    return ret;
-}
-
-esp_err_t read_meta(std::vector<uint8_t>& rx_data)
-{
-    esp_err_t ret = spi_flash_.readPage(rx_data, 0);
-
-    return ret;
-}
-
-esp_err_t test_meta(uint32_t& page_addr, uint16_t& column_addr)
-{
-    esp_err_t ret;
-    spi_flash_.eraseBlock(0);
-
-    wait_for_ready();
-
-    update_meta(page_addr, column_addr);
-    wait_for_ready();
-
-    std::vector<uint8_t> rx_data(METADATA_SIZE);
-    read_meta(rx_data);
-
-    for (int i = 0; i < 6; i++) {
-        ESP_LOGI(TAG, "Read data %d", rx_data[i]);
-    }
-
-    wait_for_ready();
-    interpret_meta_data(rx_data, page_addr, column_addr);
-    ESP_LOGI(TAG, "Metadata: Page address: %u, Column address: %u", page_addr, column_addr);
-
-    return ESP_OK;
-}
-
-extern "C" void app_main(void)
-{
-    // Test test(ESP_LOG_DEBUG);
-
-    // test.testW25N04KV();
-    //  comment start
-    esp_err_t ret;
-    init();
-
-    ESP_LOGI(TAG, "Initialized SPI Bus");
-
-    std::vector<uint32_t> wsgs(3);
-    // std::vector<uint8_t> rx_data(CHUNK_SIZE);
-    wait_for_ready();
-    spi_flash_.eraseBlock(0);
-
-    wait_for_ready();
-
-    uint16_t column_addr = 0;
-    column_addr &= 0xFFF;
-    uint32_t page_addr = 2;
-    std::vector<uint8_t> metadata(METADATA_SIZE);
-    update_meta(1, 0);
-
-    std::srand(1);
-    wsgs.at(0) = rand();
-    wsgs.at(1) = rand();
-    wsgs.at(2) = rand();
-
-    for (int i = 0; i < 3; i++) {
-        ESP_LOGI(TAG, "WSG Data: %lu", (unsigned long)wsgs[i]);
-    }
-    spi_flash_.enableWrite();
-
-    wait_for_ready();
-    for (int i = page_addr; i < 16; i++) {
-        if ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
-            update_meta(page_addr, column_addr);
-            wait_for_ready();
-        }
-
-        if (((column_addr + CHUNK_SIZE) >= 2047)) {
-            page_addr++;
-            column_addr = 0;
-            ESP_LOGI(TAG, "Incremented Page: %0x", page_addr);
-        }
-        if (page_addr >= W25N04KV::NUM_PAGES) {
-            ESP_LOGE(TAG, "Page out of bounds :(. Addr: %0x", page_addr);
-            return;
-        } else {
-            cont_write(wsgs, i, column_addr);
-        }
-        column_addr += (CHUNK_SIZE);
-        wait_for_ready();
-        vTaskDelay(2);
-    }
-    // std::vector<uint8_t> tx_data = {1, 1, 2};
-    // ESP_LOGI(TAG, "Page and column: %u, %u", page_addr, column_addr);
-    // wait_for_ready();
-    // std::vector<uint32_t> wsg_data = {1, 1, 2};
-
-    // cont_write(wsg_data, 2, 0);
-
-    vTaskDelay(5);
-    read_all(page_addr, 0);
-
-    // for (int i = 0; i < 20; i++) {
-    //     ESP_LOGI(TAG, "Read data %d", rx_data[i]);
-    // }
-
-    // wsg_data r = interpret_read_data(rx_data)[0];
-    //  ESP_LOGI(TAG, "Time: %llu", r.time);
-    //  for (int i = 0; i < 3; i++) {
-    //      ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)r.wsgs[i]);
     ESP_LOGI(TAG, "Initialized SPI Flash");
 }
