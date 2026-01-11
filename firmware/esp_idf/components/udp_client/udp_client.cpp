@@ -71,23 +71,67 @@ esp_err_t UdpClient::ensure_wifi_connection(int max_attempts) {
 }
 
 esp_err_t UdpClient::initialize_wifi_connection() {
-    nvs_flash_init();
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
+    esp_err_t err = nvs_flash_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize NVS Flash (err: %d)", err);
+        return err;
+    }
+    err = esp_netif_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize Network Interface (err: %d)", err);
+        return err;
+    }
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize Event Loop (err: %d)", err);
+        return err;
+    }
+
+    esp_netif_t * wifi_netif_ = esp_netif_create_default_wifi_sta();
+    if (wifi_netif_ == NULL) {
+        ESP_LOGE(TAG, "Failed to create default WiFi STA interface");
+        return ESP_FAIL;
+    }
+
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_initiation);
+
+    err = esp_wifi_init(&wifi_initiation);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize WiFi (err: %d)\n", err);
+        return err;
+    }
+
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
+   
     wifi_config_t wifi_configuration = {
         .sta = {
             .ssid = "baja",
             }};
-    esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
+    
+    err = esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
+        return err;
+    }
 
-    ensure_wifi_connection(5);
+    err = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
+        return err;
+    }    
+    
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start WiFi (err: %d)\n", err);
+        return err;
+    }
+
+    err = ensure_wifi_connection(5);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to connect to ap");
+        return err;
+    }
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     ESP_LOGI(TAG, "wifi initialized");

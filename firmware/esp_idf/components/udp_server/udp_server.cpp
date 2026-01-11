@@ -51,22 +51,62 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
 }
 
 esp_err_t UdpServer::initialize_wifi_connection() {
-    nvs_flash_init();
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_ap();
+    esp_err_t err = nvs_flash_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize NVS Flash (err: %d)", err);
+        return err;
+    }
+    err = esp_netif_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize Network Interface (err: %d)", err);
+        return err;
+    }
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize Event Loop (err: %d)", err);
+        return err;
+    }
+
+    esp_netif_t * wifi_netif_ = esp_netif_create_default_wifi_ap();
+    if (wifi_netif_ == NULL) {
+        ESP_LOGE(TAG, "Failed to create default WiFi AP interface");
+        return ESP_FAIL;
+    }
+
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_initiation);
+    err = esp_wifi_init(&wifi_initiation);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize WiFi (err: %d)\n", err);
+        return err;
+    }
+
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, this);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
+    
     wifi_config_t wifi_configuration = {
         .ap = {
             .ssid = "baja",
             .max_connection = 5
         }};
-    esp_wifi_set_config(WIFI_IF_AP, &wifi_configuration);
-    esp_wifi_set_mode(WIFI_MODE_AP);
-    esp_wifi_start();
+    
+    err = esp_wifi_set_config(WIFI_IF_AP, &wifi_configuration);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi config (err: %d)\n", err);
+        return err;
+    }
+
+    err = esp_wifi_set_mode(WIFI_MODE_AP);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
+        return err;
+    }    
+
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start WiFi (err: %d)\n", err);
+        return err;
+    }
+    
     esp_wifi_connect();
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -77,7 +117,8 @@ esp_err_t UdpServer::initialize_wifi_connection() {
 
 esp_err_t UdpServer::initialize_socket() {
     esp_err_t err;
-    BaseType_T ferr;
+    BaseType_t ferr;
+
     esp_event_loop_args_t sender_loop_args = {
         .queue_size = 10,
         .task_name = "sender event",
@@ -85,23 +126,26 @@ esp_err_t UdpServer::initialize_socket() {
         .task_stack_size = 4096,
         .task_core_id = tskNO_AFFINITY
     };
-    err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle)
-    if(err!=ESP_OK)
+
+    err = esp_event_loop_create(&sender_loop_args, &sender_loop_handle);
+    if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to create the event loop: %s", esp_err_to_name(err));
     }
+
     err = esp_event_handler_register_with(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, udp_send_event_handler, (void *) this);
-    if(err!=ESP_OK)
+    if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name(err));
     }
 
     ESP_LOGI(TAG, "Starting the listener thread");
     ferr = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
-    if(ferr!=pdPASS)
+    if(ferr != pdPASS)
     {
         ESP_LOGE(TAG, "Could not allocate required memory");
     }
+
     return ESP_OK;
 }
 
@@ -110,17 +154,19 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
         ESP_LOGE(TAG, "Published message size is too long");
         return ESP_FAIL;
     }
+
     esp_err_t err;
     Message * msg = new Message();
     memset(msg, 0, sizeof(Message));
     msg->timestamp = timestamp_;
     msg->payload = buf;
     msg->payload_len = buff_size;
+
     ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg->payload_len);
     msg->addr = dest_addr;
     
     err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
-    if(err!=ESP_OK)
+    if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name(err));
     }
@@ -186,7 +232,7 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
             
             ferr = xQueueSend(server->recv_queue, (void *) &msg, 0);
 
-            if(ferr!=pdPASS)
+            if(ferr != pdPASS)
             {
                 ESP_LOGW(TAG, "Queue is full!");
             }

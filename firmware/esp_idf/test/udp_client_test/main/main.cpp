@@ -17,7 +17,7 @@ extern "C" void app_main() {
     client.initialize_wifi_connection();
     client.initialize_socket();
 
-    std::array<uint8_t, 30> buf;
+    std::array<uint8_t, MESSAGE_MAX_LEN> buf;
 
     for(int i = 0; i < 100; i++) {
         for(int k = 0; k < buf.size(); k++) {
