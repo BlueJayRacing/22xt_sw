@@ -31,7 +31,7 @@
 #include "wsg_mem.hpp"
 static const char* TAG = "main";
 
-WSG_MEM::WSG_MEM() {}
+WSG_MEM::WSG_MEM() { init(); }
 
 esp_err_t WSG_MEM::wait_for_ready(int timeout)
 {
