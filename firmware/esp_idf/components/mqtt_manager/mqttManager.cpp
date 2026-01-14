@@ -86,6 +86,7 @@ esp_err_t mqttManager::init(const std::string& t_ssid, const std::string& t_pswd
         ESP_LOGE(TAG, "Failed to initialize WiFi (err: %d)\n", err);
         return err;
     }
+    
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err) {
         ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
