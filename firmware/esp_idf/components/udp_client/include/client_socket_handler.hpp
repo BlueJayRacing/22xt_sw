@@ -16,7 +16,7 @@
 #include <lockGuard.hpp>
 #include <array>
 
-#define MESSAGE_MAX_LEN 30
+#define MESSAGE_MAX_LEN 130
 
 typedef struct Message {
     uint64_t timestamp;
@@ -35,11 +35,17 @@ class SocketHandler {
         esp_err_t send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buf_len);
         int recv(Message * msg);
 
+        bool is_socket_open();
+
         void close_sock();
 
     private:
+        esp_err_t partial_socket_init();
+
         SemaphoreHandle_t mutex;
         int sock;
+
+        int port;
 
         struct timeval timeout;
 
