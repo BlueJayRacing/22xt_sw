@@ -11,13 +11,6 @@ int min_(int a, int b);
 
 int max_(int a, int b);
 
-std::array<uint8_t, 4> float_to_arr(float val) {
-    uint32_t cpy;
-    memccpy(&cpy, &val, sizeof(cpy));
-
-    return uin32_to_arr(cpy);
-}
-
 std::array<uint8_t, 4> uint32_to_arr(uint32_t val) {
     std::array<uint8_t, 4> buf = {0};
 
@@ -28,8 +21,18 @@ std::array<uint8_t, 4> uint32_to_arr(uint32_t val) {
     return buf;
 }
 
+std::array<uint8_t, 2> uint16_to_arr(uint16_t val) {
+    std::array<uint8_t, 2> buf = {0};
+
+    for (int i = 0; i < 2; i++) {
+        buf[1 - i] = (val >> (i * 8)) & 0xFF;
+    }
+
+    return buf;
+}
+
 std::array<uint8_t, 8> uint64_to_arr(uint64_t val) {
-    std::array<uint8_t, 4> buf = {0};
+    std::array<uint8_t, 8> buf = {0};
 
     for (int i = 0; i < 8; i++) {
         buf[7 - i] = (val >> (i*8)) & 0xFF;
@@ -38,32 +41,33 @@ std::array<uint8_t, 8> uint64_to_arr(uint64_t val) {
     return buf;
 }
 
-std::array<uint8_t, 25> serialize_wsg_data(wsg_data data) {
-    std::array<uint8_t, 25> buf = {0};
+std::array<uint8_t, 19> serialize_wsg_data(wsg_data data) {
+    std::array<uint8_t, 19> buf = {0};
     std::array<uint8_t, 4> byte4_buf;
 
     // set id
     buf[0] = data.wsg_id;
 
     // dac bias
-    byte4_buf = uint32_to_arr(wsg_data.dac_bias);
+    byte4_buf = uint32_to_arr(data.dac_bias);
     for (int i = 0; i < 4; i++) {
         buf[1 + i] = byte4_buf[i];
     }
 
+    std::array<uint8_t, 2> byte2_buf = {0};
     //samples
     for (int sg = 0; sg < 3; sg++) {
-        byte4_buf = float_to_arr(wsg_data.sample[sg]);
+        byte2_buf = uint16_to_arr(data.sample[sg]);
     
-        for (int i = 0; i < 4; i++) {
-            buf[5 + i + (sg * 4)] = byte4_buf[i];
+        for (int i = 0; i < 2; i++) {
+            buf[5 + i + (sg * 2)] = byte2_buf[i];
         }
     }
 
     // timestamp
-    std::array<uint8_t, 8> byte8_buf = uint64_to_buf(wsg_data.timestamp);
-    for (int i = 0; i < 4; i++) {
-        buf[17 + i] = byte4_buf[i];
+    std::array<uint8_t, 8> byte8_buf = uint64_to_arr(data.timestamp);
+    for (int i = 0; i < 8; i++) {
+        buf[11 + i] = byte8_buf[i];
     }
 
     return buf;
@@ -91,7 +95,7 @@ esp_err_t driveSensorSetup::init(ads1120_init_param_t adc_params, ad5626_init_pa
         return ret;
     }
 
-    drive_cfg_t init_cfg = {drive_cfg_t::MEASURING_MODE, drive_cfg_t::STRAIN_GAUGE};
+    drive_cfg_t init_cfg = {drive_cfg_t::MEASURING_MODE, drive_cfg_t::STRAIN_GAUGE_0};
     ret                  = configure(init_cfg);
     if (ret) {
         return ret;
@@ -168,7 +172,7 @@ esp_err_t driveSensorSetup::zero(void)
 
     // Set ADC into Zeroing Mode
     drive_cfg_t old_cfg  = cfg_;
-    drive_cfg_t zero_cfg = {drive_cfg_t::ZEROING_MODE, drive_cfg_t::STRAIN_GAUGE};
+    drive_cfg_t zero_cfg = {drive_cfg_t::ZEROING_MODE, drive_cfg_t::STRAIN_GAUGE_0};
     ret                  = configure(zero_cfg);
     if (ret) {
         return ret;
@@ -242,14 +246,14 @@ esp_err_t driveSensorSetup::configure(drive_cfg_t new_cfg)
     memset(&regs, 0, sizeof(ads1120_regs_t));
 
     switch (new_cfg.channel) {
-    case drive_cfg_t::STRAIN_GAUGE:
+    case drive_cfg_t::STRAIN_GAUGE_0:
         regs.channels = AIN1_AVSS;
         break;
-    case drive_cfg_t::EXCITATION:
-        regs.channels = AIN0_AVSS;
-        break;
-    case drive_cfg_t::DAC_BIAS:
+    case drive_cfg_t::STRAIN_GAUGE_1:
         regs.channels = AIN2_AVSS;
+        break;
+    case drive_cfg_t::STRAIN_GAUGE_2:
+        regs.channels = AIN3_AVSS;
         break;
     }
 

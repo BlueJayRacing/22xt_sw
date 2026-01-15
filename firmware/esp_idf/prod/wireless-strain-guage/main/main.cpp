@@ -10,10 +10,7 @@
 #define SPI_SCLK_PIN    30
 
 static const char* TAG = "main";
-
-typedef struct var_pkt {
-
-} var_pkt_t;
+static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1, drive_cfg_t::STRAIN_GAUGE_2};
 
 QueueHandle_t flash_mem_q;
 TaskHandle_t write_handle;
@@ -21,12 +18,17 @@ UBaseType_t sem_val = 1;
 UdpClient client;
 int dac_bias = -1;
 
+void startupDrive(void);
+void vTaskFlashWrite(void * pvParameter);
+esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr);
+void vTaskDataProcessing(void * pvParameter);
+
 extern "C" void app_main(void)
 {
     startupDrive();
 }
 
-void startupDrive() {
+void startupDrive(void) {
     // stall till udp client startup
     SocketHandler socket_handle;
 
@@ -67,8 +69,8 @@ void startupDrive() {
     // the other codes either activates calibration from pi or it activates drive, we can assume drive but it would be interesting to also think about cal
 
     // start tasks
-    vTaskCreate(vTaskFlashWrite, "flash memory write thread", (1<<8), NULL, 2, &write_handle);
-    vTaskCreate(vTaskDataProcessing, "data processing thread", (1<<8), NULL, 1, NULL)
+    xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1<<8), NULL, 2, &write_handle, (UBaseType_t) 0);
+    xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1<<8), NULL, 1, NULL, (UBaseType_t) 1);
 }
 
 // task for reading data/publishing udp
@@ -91,9 +93,9 @@ void vTaskDataProcessing(void * pvParameter) {
     driveSensorSetup sensors;
     sensors.init(ads1120_params, ad5626_params);
 
-    sensors.setDacBias(dac_bias)
+    sensors.setDACValue(dac_bias);
 
-    uint8_t array_ct = 0;
+    int array_ct = 0;
     std::array<wsg_data_t, 6> udp_data_buf;
 
     wsg_data_t * sample;
@@ -105,12 +107,21 @@ void vTaskDataProcessing(void * pvParameter) {
         drive_measurement_t measure;
 
         // THIS MEASUREMENT DOESN'T WORK LOL
-        sensor.measure(true, &measure);
+        sensors.measure(true, &measure);
 
         sample->timestamp = get_timestamp();
         sample->dac_bias = dac_bias;
 
-        // store data in sample
+        drive_cfg_t drive_cfg;
+        drive_cfg.mode = drive_cfg_t::MEASURING_MODE;
+
+        for (int i = 0; i < 3; i++) {
+            drive_cfg.channel = SG_CHANNELS[i];
+            sensors.configure(drive_cfg);
+            sensors.measure(true, &measure);
+
+            sample->sample[i] = measure.adc_value;
+        }
 
         if(xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
             ESP_LOGW(TAG, "failed to add sample to queue");
@@ -121,10 +132,12 @@ void vTaskDataProcessing(void * pvParameter) {
         }
 
         // other stuff
-        udp_data_buf[array_ct++] = &sample;
+        memcpy(&udp_data_buf + array_ct, sample, sizeof(wsg_data_t));
+        array_ct++;
         
         if (array_ct == 6) {
             serialize_msg_and_publish(udp_data_buf);
+            array_ct = 0;
         }
     }
 
@@ -136,16 +149,18 @@ void vTaskDataProcessing(void * pvParameter) {
 // task to write for flash
 void vTaskFlashWrite(void * pvParameter) {
     while (1) {
-        uint32_t notif_val = xTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY)
+        uint32_t notif_val = ulTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY);
         if(notif_val != 1) {
             continue;
         }
     
-        wsg_data_t * sample;
-        while (xQueueReceive(flash_mem_q, sample, 10) == pdPASS) {
+        wsg_data_t sample;
+
+        while (xQueueReceive(flash_mem_q, &sample, 10) == pdPASS) {
             // put stuff in write format
 
-            delete sample;
+            // delete sample ptr
+            delete &sample;
         }
 
         // write data to flash in one go or not
@@ -153,16 +168,16 @@ void vTaskFlashWrite(void * pvParameter) {
 }
 
 
-esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 5> data_arr) {
+esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr) {
     std::array<uint8_t, MESSAGE_MAX_LEN> send_data = {0};
 
-    std::array<uint8_t 19> temp_d;
+    std::array<uint8_t, 19> temp_d;
     for (int i = 0; i < data_arr.size(); i++) {
         temp_d = serialize_wsg_data(data_arr[i]);
-        std::copy(temp_d.begin(), temp_d.end(), result.begin() + (i * 19));
+        std::copy(temp_d.begin(), temp_d.end(), send_data.begin() + (i * 19));
     }
 
-    esp_err_t err = client.publish_data(get_timestamp(), temp_d, temp_d.size());
+    esp_err_t err = client.publish_data(get_timestamp(), send_data, send_data.size());
     
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "failed to serialize and publish data");

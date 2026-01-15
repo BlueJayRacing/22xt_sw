@@ -11,24 +11,25 @@
 
 #define WSG_BYTE_LEN = 1
 
+typedef struct drive_cfg
+{ 
+  enum mode_t { ZEROING_MODE, MEASURING_MODE } mode;
+  enum channel_t {STRAIN_GAUGE_0, STRAIN_GAUGE_1, STRAIN_GAUGE_2 } channel;
+} drive_cfg_t;
+
 typedef struct wsg_data {
     uint8_t wsg_id; // 1 byte
-    std::array<uint16_t> sample[3]; // 16 bit 2 byte * 3 = 6 bytes
+    std::array<uint16_t, 3> sample; // 16 bit 2 byte * 3 = 6 bytes
     uint64_t timestamp; // 8 byte
     uint32_t dac_bias; // 4 byte
 } wsg_data_t;
 
 
-std::array<uint8_t, 4> float_to_arr(float val);
+std::array<uint8_t, 2> uint16_to_arr(uint16_t val);
 std::array<uint8_t, 4> uint32_to_arr(uint32_t val);
 std::array<uint8_t, 8> uint64_to_arr(uint64_t val);
 
-std::array<uint8_t, 25> serialize_wsg_data(wsg_data data);
-
-typedef struct drive_cfg { 
-    enum mode_t { ZEROING_MODE, MEASURING_MODE } mode;
-    enum channel_t {STRAIN_GAUGE, EXCITATION, DAC_BIAS } channel;
-} drive_cfg_t;
+std::array<uint8_t, 19> serialize_wsg_data(wsg_data data);
 
 typedef struct drive_measurement {
     float voltage;
@@ -36,8 +37,6 @@ typedef struct drive_measurement {
     int16_t adc_value;
     uint16_t dac_bias;
 } drive_measurement_t;
-
-
 
 class driveSensorSetup {
     public:
