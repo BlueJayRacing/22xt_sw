@@ -13,7 +13,7 @@
 
 typedef struct wsg_data {
     uint8_t wsg_id; // 1 byte
-    std::array<float> sample[3]; // 32 bit 4 byte * 3 = 12 bytes
+    std::array<uint16_t> sample[3]; // 16 bit 2 byte * 3 = 6 bytes
     uint64_t timestamp; // 8 byte
     uint32_t dac_bias; // 4 byte
 } wsg_data_t;

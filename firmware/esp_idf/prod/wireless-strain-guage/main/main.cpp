@@ -94,7 +94,7 @@ void vTaskDataProcessing(void * pvParameter) {
     sensors.setDacBias(dac_bias)
 
     uint8_t array_ct = 0;
-    std::array<wsg_data_t, 5> udp_data_buf;
+    std::array<wsg_data_t, 6> udp_data_buf;
 
     wsg_data_t * sample;
 
@@ -112,8 +112,6 @@ void vTaskDataProcessing(void * pvParameter) {
 
         // store data in sample
 
-        std
-
         if(xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
             ESP_LOGW(TAG, "failed to add sample to queue");
         }
@@ -125,7 +123,7 @@ void vTaskDataProcessing(void * pvParameter) {
         // other stuff
         udp_data_buf[array_ct++] = &sample;
         
-        if (array_ct == 5) {
+        if (array_ct == 6) {
             serialize_msg_and_publish(udp_data_buf);
         }
     }
@@ -156,12 +154,12 @@ void vTaskFlashWrite(void * pvParameter) {
 
 
 esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 5> data_arr) {
-    std::array<uint8_t, 125> send_data;
+    std::array<uint8_t, MESSAGE_MAX_LEN> send_data = {0};
 
-    std::array<uint8_t 25> temp_d;
+    std::array<uint8_t 19> temp_d;
     for (int i = 0; i < data_arr.size(); i++) {
         temp_d = serialize_wsg_data(data_arr[i]);
-        std::copy(temp_d.begin(), temp_d.end(), result.begin() + (i * 25));
+        std::copy(temp_d.begin(), temp_d.end(), result.begin() + (i * 19));
     }
 
     esp_err_t err = client.publish_data(get_timestamp(), temp_d, temp_d.size());
