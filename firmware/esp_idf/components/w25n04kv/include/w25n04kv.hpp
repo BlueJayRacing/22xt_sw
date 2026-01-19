@@ -61,8 +61,8 @@ class W25N04KV {
     esp_err_t init(w25n04kv_init_param_t t_init_param);
     esp_err_t reset(void);
     esp_err_t eraseBlock(const uint64_t block_address);
-    esp_err_t writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address = 0);
-    esp_err_t readPage(std::vector<uint8_t>& rx_data, uint32_t page_address, uint16_t column_address = 0);
+    esp_err_t writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address);
+    esp_err_t readPage(std::vector<uint8_t>& rx_data, uint32_t page_address, uint16_t column_address);
     esp_err_t readStatus(w25n04kv_device_status_t* device_status);
     esp_err_t isCorrectDevice(void);
     esp_err_t enableWrite(void);

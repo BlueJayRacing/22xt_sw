@@ -149,7 +149,7 @@ esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
     return transfer(W25N04KV_OP_CODE_BLOCK_ERASE, dummy_rx, block_address, 24);
 }
 
-esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address)
+esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address = 0)
 {
 
     if (tx_data.size() > PAGE_SIZE) {
@@ -171,6 +171,7 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
     std::vector<uint8_t> dummy_rx;
     // uint64_t block_addr = (uint64_t)(page_address & PADDR_SIZE) << 12 | (uint64_t)(column_address & CADDR_SIZE);
     // beautiful and correct code that serves literally no purpose :()
+    vTaskDelay(10);
 
     ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, column_address, 16, 0, tx_data);
     if (ret != ESP_OK) {
@@ -183,7 +184,7 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
         ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
-
+    vTaskDelay(50);
     printStatusReg();
     return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_address, 24);
 }
@@ -193,7 +194,7 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
 
 // }
 
-esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_address, uint16_t column_address)
+esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_address, uint16_t column_address = 0)
 {
 
     std::vector<uint8_t> dummy_rx;
