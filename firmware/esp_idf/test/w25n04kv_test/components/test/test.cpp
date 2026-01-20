@@ -98,7 +98,7 @@ void Test::testReadWriteMemory(void)
 
     vTaskDelay(1);
 
-    assert(spi_flash_.readPage(rx_data, page_address) == ESP_OK);
+    assert(spi_flash_.readPage(rx_data, page_address, 0) == ESP_OK);
 
     for (int i = 0; i < W25N04KV::PAGE_SIZE; i++) {
         ESP_LOGI(TAG, "TX: %d, RX: %d\n", tx_data[i], rx_data[i]);
