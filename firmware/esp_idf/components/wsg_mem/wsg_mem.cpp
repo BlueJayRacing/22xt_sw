@@ -35,18 +35,18 @@ WSG_MEM::WSG_MEM() { init(); }
 
 esp_err_t WSG_MEM::wait_for_ready(int timeout)
 {
-
     int i = 0;
     w25n04kv_device_status_t status;
 
     while (i < timeout) {
         spi_flash_.readStatus(&status);
         if (status.is_busy) {
+            ESP_LOGI(TAG, "Delayed by 10ms");
             vTaskDelay(10);
         } else {
+            vTaskDelay(10);
             return ESP_OK;
         }
-        vTaskDelay(10);
         i += 10;
     }
     return ESP_ERR_TIMEOUT;
@@ -100,8 +100,9 @@ esp_err_t WSG_MEM::init()
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI Flash: %d", ret);
     }
+    wait_for_ready();
     spi_flash_.reset();
-
+    wait_for_ready();
     spi_flash_.isCorrectDevice();
     spi_flash_.enableWrite();
     wait_for_ready();
@@ -109,14 +110,14 @@ esp_err_t WSG_MEM::init()
     spi_flash_.printConfigReg();
 
     // meta data initialization
-    std::vector<uint8_t> metadata(W25N04KV::PAGE_SIZE);
-    ret = read_meta(metadata);
-    if (meta_empty(metadata)) {
-        ESP_LOGI(TAG, "Initializing meta");
-        init_meta(WSG_ID, DAC_BIAS);
-    } else {
-        ESP_LOGI(TAG, "Meta already initialized");
-    }
+    // std::vector<uint8_t> metadata(W25N04KV::PAGE_SIZE);
+    // ret = read_meta(metadata);
+    // if (meta_empty(metadata)) {
+    //     ESP_LOGI(TAG, "Initializing meta");
+    //     init_meta(WSG_ID, DAC_BIAS);
+    // } else {
+    //     ESP_LOGI(TAG, "Meta already initialized");
+    // }
     return ret;
 }
 
@@ -180,16 +181,17 @@ std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint32_t>& wsgs)
 esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
-    std::vector<uint8_t> tx_data = format_send_data(wsgs);
-
+    // std::vector<uint8_t> tx_data = format_send_data(wsgs);
+    std::vector<uint8_t> tx_data = {1, 2, 3};
     ESP_LOGI(TAG, "Writing page");
 
-    for (int i = 0; i < CHUNK_SIZE; i++) {
+    for (int i = 0; i < 3; i++) { // instead of 3 should be chunk size
         std::string s = std::format("{:x}", tx_data[i]);
         // ESP_LOGI(TAG, "Data in hex %s", s.c_str());
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
     }
     wait_for_ready();
+    // vTaskDelay(40);
     esp_err_t ret = spi_flash_.writePage(tx_data, page_addr, column_addr);
 
     if (ret != ESP_OK) {
@@ -202,7 +204,8 @@ esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16
 
 void WSG_MEM::read_page(uint32_t page_addr)
 {
-    wait_for_ready();
+    vTaskDelay(100);
+    // wait_for_ready();
     std::vector<uint8_t> rx_data(30);
     ESP_LOGI(TAG, "read page");
     spi_flash_.readPage(rx_data, page_addr, 0);
@@ -350,7 +353,7 @@ void WSG_MEM::nuke()
     wait_for_ready();
     ESP_LOGI(TAG, "Erasing first block");
     spi_flash_.eraseBlock(0);
-    wait_for_ready();
+    // wait_for_ready();
 }
 esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, int i)
 {

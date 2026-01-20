@@ -68,7 +68,7 @@ extern "C" void app_main(void)
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
 
-    uint32_t page_address = 0b00000000000001; // std::rand() % W25N04KV::NUM_PAGES;
+    uint32_t page_address = 0b00000000000010; // std::rand() % W25N04KV::NUM_PAGES;
 
     // 0xxxxx00
 
@@ -87,7 +87,7 @@ extern "C" void app_main(void)
         // ESP_LOGI(TAG, "RX data %d", rx_data[i]);
     }
 
-    spi_flash_.writePage(tx_data, page_address, 0);
+    spi_flash_.writePage(tx_data, page_address, 1);
 
     spi_flash_.printStatusReg();
 
