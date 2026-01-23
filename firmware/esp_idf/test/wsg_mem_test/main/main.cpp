@@ -13,6 +13,7 @@ void nuke(WSG_MEM& w) { w.nuke(); }
 WSG_MEM test_init()
 {
     WSG_MEM wsg_mem;
+    // wsg_mem.nuke();
     return wsg_mem;
 }
 
@@ -35,18 +36,32 @@ void test_write_column(WSG_MEM& w)
 void stress_test(WSG_MEM& w)
 {
     std::vector<uint32_t> x = {1, 2, 3};
-    for (int i = 2; i < 5; i++) {
+    for (int i = 2; i < 10; i++) {
         w.write(x, i, 1);
     }
 
-    for (int i = 2; i < 5; i++) {
+    for (int i = 2; i < 10; i++) {
         w.read_page(i);
     }
 }
 
-void tune_min_delay(void) { WSG_MEM wsg_mem = test_init(); }
-extern "C" void app_main(void)
+void test_indiv_overflow(WSG_MEM& w)
+{
+    std::vector<uint32_t> wsgs = {1, 2, 3};
+    w.indiv_write(wsgs, 0);
+    w.read_page(2);
+}
+
+WSG_MEM tune_min_delay(void)
 {
     WSG_MEM wsg_mem = test_init();
-    stress_test(wsg_mem);
+    return wsg_mem;
+}
+extern "C" void app_main(void)
+{
+
+    WSG_MEM wsg_mem = test_init();
+    wsg_mem.nuke();
+    wsg_mem.update_meta(1, 2026);
+    test_indiv_overflow(wsg_mem);
 }

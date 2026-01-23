@@ -56,6 +56,7 @@ bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
 {
     return std::all_of(meta.cbegin(), meta.cend(), [](uint8_t i) { return i == 255; });
 }
+
 esp_err_t WSG_MEM::init_meta(uint8_t wsg_id_, uint32_t dac_bias_)
 {
     update_meta(1, 0); // initial page = 1, initial column = 0
@@ -110,14 +111,14 @@ esp_err_t WSG_MEM::init()
     spi_flash_.printConfigReg();
 
     // meta data initialization
-    // std::vector<uint8_t> metadata(W25N04KV::PAGE_SIZE);
-    // ret = read_meta(metadata);
-    // if (meta_empty(metadata)) {
-    //     ESP_LOGI(TAG, "Initializing meta");
-    //     init_meta(WSG_ID, DAC_BIAS);
-    // } else {
-    //     ESP_LOGI(TAG, "Meta already initialized");
-    // }
+    std::vector<uint8_t> metadata(W25N04KV::PAGE_SIZE);
+    ret = read_meta(metadata);
+    if (meta_empty(metadata)) {
+        ESP_LOGI(TAG, "Initializing meta");
+        init_meta(WSG_ID, DAC_BIAS);
+    } else {
+        ESP_LOGI(TAG, "Meta already initialized");
+    }
     return ret;
 }
 
@@ -220,7 +221,7 @@ esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vecto
     ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", last_page, last_column);
     esp_err_t ret;
     ret = read_and_interpret_meta();
-    wait_for_ready();
+    vTaskDelay(80);
 
     for (uint32_t i = 1; i < page_addr + 1; i++) {
         ret = spi_flash_.readPage(rx_data, i, column_addr);
@@ -240,7 +241,7 @@ esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vecto
                 ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
             }
         }
-        wait_for_ready();
+        vTaskDelay(80);
     }
     return ret;
 }
@@ -264,6 +265,7 @@ void WSG_MEM::interpret_meta_data(std::vector<uint8_t>& rx_data)
         dac_bias |= ((uint32_t)rx_data[i] << ((METADATA_SIZE - 1 - i) * 8));
     }
 }
+
 esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
 {
     // 4+2 = 6
@@ -278,11 +280,12 @@ esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
         tx_data[i + 4] = (column_addr >> ((1 - i) * 8)) & 0xFF;
         // std::string s = std::format("{:x}", output[i]);
     }
-
+    wait_for_ready();
     esp_err_t ret = spi_flash_.writePage(tx_data, 0, 0);
-
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "AHHHHH. Failed writing metadata. Error %d", ret);
+    } else {
+        ESP_LOGI(TAG, "Wrote metadata successfully!");
     }
     return ret;
 }
@@ -305,7 +308,6 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     std::vector<uint8_t> metadata(METADATA_SIZE);
     // here add logic about if the meta is not initialized, initialize it. or maybe thats in init.
     ret = read_meta(metadata);
-    wait_for_ready();
     for (int i = 0; i < METADATA_SIZE; i++) {
         ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
     }
@@ -363,7 +365,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, int i)
         wait_for_ready();
     }
 
-    if (((last_column + CHUNK_SIZE) >= 2047)) {
+    if (((last_column + CHUNK_SIZE) >= 2046)) {
         last_page++;
         last_column = 0;
         ESP_LOGI(TAG, "Incremented Page: %0x", last_page);
@@ -385,9 +387,8 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, int i)
 esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
 {
 
-    // cont_write assumes t
     esp_err_t ret;
-    init();
+    // init();
 
     read_and_interpret_meta();
     for (int i = 0; i < 16; i++) // condition is while data is being read? not sure how to do yet
