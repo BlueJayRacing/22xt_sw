@@ -84,40 +84,30 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
  * @param tx_data           Data buffer to send to SPI Flash. The length of the write
  *                          is dictated by the length of rx_data.
  *******************************************************************************/
-esp_err_t W25N04KV::transfer(const uint8_t op_code, std::vector<uint8_t>& rx_data,
-                             const uint64_t address = 0,
-                             const uint8_t address_length = 0,
-                             const uint8_t dummy_byte_len        = 0,
+esp_err_t W25N04KV::transfer(const uint8_t op_code, std::vector<uint8_t>& rx_data, const uint64_t address = 0,
+                             const uint8_t address_length = 0, const uint8_t dummy_byte_len = 0,
                              const std::vector<uint8_t>& tx_data = std::vector<uint8_t>(0))
 {
     spi_transaction_ext_t ext_t;
-
     ext_t.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
-
     // Set Length of Command, Address, and Dummy Bits
     ext_t.command_bits = 8;
     ext_t.address_bits = address_length;
     ext_t.dummy_bits   = dummy_byte_len;
-
     // Set command bits
     ext_t.base.cmd = op_code;
-
     // Set address bits
     ext_t.base.addr = address;
-
     // Set tx data buffer
     ext_t.base.tx_buffer = tx_data.data();
     ext_t.base.length    = tx_data.size() << 3;
-
     // Set rx data buffer
     ext_t.base.rx_buffer = rx_data.data();
     ext_t.base.rxlength  = rx_data.size() << 3;
-
-    esp_err_t err = spi_device_polling_transmit(spi_dev_, &(ext_t.base));
+    esp_err_t err        = spi_device_polling_transmit(spi_dev_, &(ext_t.base));
     if (err) {
         return err;
     }
-
     return ESP_OK;
 }
 
@@ -133,17 +123,18 @@ esp_err_t W25N04KV::enableWrite(void)
     return transfer(W25N04KV_OP_CODE_WRITE_ENABLE, dummy_rx);
 }
 
-esp_err_t W25N04KV::disableWrite(void) {
+esp_err_t W25N04KV::disableWrite(void)
+{
     std::vector<uint8_t> dummy_rx;
     return transfer(W25N04KV_OP_CODE_WRITE_DISABLE, dummy_rx);
 }
 
 esp_err_t W25N04KV::disableWriteProtection(void)
 {
-    std::vector<uint8_t> tx_data            = {0x00};
+    std::vector<uint8_t> tx_data = {0x00};
 
     std::vector<uint8_t> dummy_rx;
-    return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0xA0, 8 , 0, tx_data);
+    return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0xA0, 8, 0, tx_data);
 };
 
 esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
@@ -153,14 +144,14 @@ esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
         ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
-
     std::vector<uint8_t> dummy_rx;
 
     return transfer(W25N04KV_OP_CODE_BLOCK_ERASE, dummy_rx, block_address, 24);
 }
 
-esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address)
+esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page_address, uint16_t column_address = 0)
 {
+
     if (tx_data.size() > PAGE_SIZE) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -178,8 +169,11 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
     printStatusReg();
 
     std::vector<uint8_t> dummy_rx;
+    // uint64_t block_addr = (uint64_t)(page_address & PADDR_SIZE) << 12 | (uint64_t)(column_address & CADDR_SIZE);
+    // beautiful and correct code that serves literally no purpose :()
+    vTaskDelay(10);
 
-    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, 0, 16, 0, tx_data);
+    ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, column_address, 16, 0, tx_data);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to load data: %d", ret);
         return ret;
@@ -190,20 +184,19 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
         ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
-
+    vTaskDelay(50);
     printStatusReg();
-
     return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_address, 24);
 }
 
-// esp_err_t W25N04KV::loadPage(uint32_t page_addresss) {
+// esp_err_t W25N04KV::loadPage(uint32_t page_address) {
 //     std::vector<uint8_t> dummy_rx;
-
 
 // }
 
-esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_address)
+esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_address, uint16_t column_address = 0)
 {
+
     std::vector<uint8_t> dummy_rx;
 
     esp_err_t ret = transfer(W25N04KV_OP_CODE_PAGE_READ_DATA, dummy_rx, page_address, 24);
@@ -212,14 +205,14 @@ esp_err_t W25N04KV::readPage(std::vector<uint8_t>& rx_data, uint32_t page_addres
         return ret;
     }
 
-    vTaskDelay(1);
+    vTaskDelay(10);
 
-    return transfer(W25N04KV_OP_CODE_READ_DATA, rx_data, 0, 16, 8);
+    return transfer(W25N04KV_OP_CODE_READ_DATA, rx_data, column_address, 16, 8);
 }
 
 /*******************************************************************************
  * @brief Reads the status of the W25N04KV device.
- * 
+ *
  * @param device_status Pointer to where the device status should be stored.
  *******************************************************************************/
 esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
@@ -243,7 +236,8 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
     return ESP_OK;
 }
 
-esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config) {
+esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config)
+{
     std::vector<uint8_t> rx_data(1);
 
     esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0xB0, 8);
@@ -254,13 +248,13 @@ esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config) 
 
     ESP_LOGI(TAG, "Value of read status register: %d", (int)rx_data[0]);
 
-    device_config->otp_lock = rx_data[0] & 0x40;
-    device_config->otp_mode = rx_data[0] & 0x20;
-    device_config->status_reg_1_lock = rx_data[0] & 0x10;
-    device_config->ecc = rx_data[0] & 0x08;
-    device_config->buffer_mode = rx_data[0] & 0x04;
+    device_config->otp_lock               = rx_data[0] & 0x40;
+    device_config->otp_mode               = rx_data[0] & 0x20;
+    device_config->status_reg_1_lock      = rx_data[0] & 0x10;
+    device_config->ecc                    = rx_data[0] & 0x08;
+    device_config->buffer_mode            = rx_data[0] & 0x04;
     device_config->output_driver_strength = rx_data[0] & 0x02;
-    device_config->hold_disable = rx_data[0] & 0x01;
+    device_config->hold_disable           = rx_data[0] & 0x01;
 
     return ESP_OK;
 }
@@ -272,7 +266,7 @@ esp_err_t W25N04KV::isCorrectDevice(void)
 {
     std::vector<uint8_t> rx_data(3, 0);
 
-    esp_err_t ret = transfer(W25N04KV_OP_CODE_JEDEC_ID, rx_data, 0, 0 , 8);
+    esp_err_t ret = transfer(W25N04KV_OP_CODE_JEDEC_ID, rx_data, 0, 0, 8);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read JEDEC ID: %d", ret);
         return ret;
@@ -287,7 +281,8 @@ esp_err_t W25N04KV::isCorrectDevice(void)
     return ESP_OK;
 }
 
-esp_err_t W25N04KV::printStatusReg(void) {
+esp_err_t W25N04KV::printStatusReg(void)
+{
     w25n04kv_device_status_t status;
     esp_err_t err = readStatus(&status);
 
@@ -300,11 +295,12 @@ esp_err_t W25N04KV::printStatusReg(void) {
     ESP_LOGI(TAG, "Status Reg 1: Erase Failure %d", status.erase_failure);
     ESP_LOGI(TAG, "Status Reg 1: Write Enable %d", status.write_enable);
     ESP_LOGI(TAG, "Status Reg 1: IC is busy %d", status.is_busy);
-        
+
     return ESP_OK;
 }
 
-esp_err_t W25N04KV::printConfigReg(void) {
+esp_err_t W25N04KV::printConfigReg(void)
+{
     w25n04kv_device_config_t config_status;
     esp_err_t err = readConfigRegister(&config_status);
 
