@@ -11,7 +11,6 @@
 #include <string.h>
 #include <string>
 #include <sys/time.h> // gettimeofday
-#include <vector>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -57,23 +56,38 @@ bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
     return std::all_of(meta.cbegin(), meta.cend(), [](uint8_t i) { return i == 255; });
 }
 
-esp_err_t WSG_MEM::init_meta(uint8_t wsg_id_, uint32_t dac_bias_)
+esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint32_t dac_bias_)
 {
-    update_meta(1, 0); // initial page = 1, initial column = 0
+    last_page   = page;
+    last_column = column;
+    wsg_id      = wsg_id_;
+    dac_bias_   = dac_bias_;
 
-    std::vector<uint8_t> tx_data(METADATA_SIZE - PAGE_COLUMN_META_SIZE);
+    std::vector<uint8_t> tx_data(METADATA_SIZE);
+    // updating first page with metadata
+    for (int i = 0; i < 4; i++) {
+        tx_data[i] = (page >> ((3 - i) * 8)) & 0xFF;
+        // std::string s = std::format("{:x}", output[i]);
+    }
+    for (int i = 0; i < 2; i++) {
+        tx_data[i + 4] = (column >> ((1 - i) * 8)) & 0xFF;
+        // std::string s = std::format("{:x}", output[i]);
+    }
 
     // set ID and DAC bias
     ESP_LOGI(TAG, "id: %u", wsg_id_);
     tx_data[PAGE_COLUMN_META_SIZE] = wsg_id_;
+
     for (int i = PAGE_COLUMN_META_SIZE + 1; i < METADATA_SIZE; i++) {
         tx_data[i] = (dac_bias_ >> ((3 - (i - (PAGE_COLUMN_META_SIZE + 1))) * 8)) & 0xFF;
         // splits into individual bits. subtract the page_column +1 because that was the initial value.
     } // multiply by 8 bc its byte and mask to change it into one byte
     wait_for_ready();
-    esp_err_t ret = spi_flash_.writePage(tx_data, 0, PAGE_COLUMN_META_SIZE);
+    esp_err_t ret = spi_flash_.writePage(tx_data, 0, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "AHHHHH. Failed writing metadata. Error %d", ret);
+    } else {
+        ESP_LOGI(TAG, "Wrote metadata successfully!");
     }
     return ret;
 }
@@ -111,14 +125,7 @@ esp_err_t WSG_MEM::init()
     spi_flash_.printConfigReg();
 
     // meta data initialization
-    std::vector<uint8_t> metadata(W25N04KV::PAGE_SIZE);
-    ret = read_meta(metadata);
-    if (meta_empty(metadata)) {
-        ESP_LOGI(TAG, "Initializing meta");
-        init_meta(WSG_ID, DAC_BIAS);
-    } else {
-        ESP_LOGI(TAG, "Meta already initialized");
-    }
+    ret = read_and_interpret_meta();
     return ret;
 }
 
@@ -191,8 +198,7 @@ esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16
         // ESP_LOGI(TAG, "Data in hex %s", s.c_str());
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
     }
-    wait_for_ready();
-    // vTaskDelay(40);
+    vTaskDelay(50);
     esp_err_t ret = spi_flash_.writePage(tx_data, page_addr, column_addr);
 
     if (ret != ESP_OK) {
@@ -208,10 +214,12 @@ void WSG_MEM::read_page(uint32_t page_addr)
     vTaskDelay(100);
     // wait_for_ready();
     std::vector<uint8_t> rx_data(30);
-    ESP_LOGI(TAG, "read page");
+    ESP_LOGI(TAG, "read page %u", page_addr);
     spi_flash_.readPage(rx_data, page_addr, 0);
     for (uint8_t i : rx_data) {
-        ESP_LOGI(TAG, "Hi: %u", i);
+        std::string s = std::format("{:x}", i);
+        ESP_LOGI(TAG, "Data in hex %s", s.c_str());
+        // ESP_LOGI(TAG, "Hi: %u", i);
     }
 }
 esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data)
@@ -268,31 +276,15 @@ void WSG_MEM::interpret_meta_data(std::vector<uint8_t>& rx_data)
 
 esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
 {
-    // 4+2 = 6
-    std::vector<uint8_t> tx_data(PAGE_COLUMN_META_SIZE);
-
-    // updating first page with metadata
-    for (int i = 0; i < 4; i++) {
-        tx_data[i] = (page_addr >> ((3 - i) * 8)) & 0xFF;
-        // std::string s = std::format("{:x}", output[i]);
-    }
-    for (int i = 0; i < 2; i++) {
-        tx_data[i + 4] = (column_addr >> ((1 - i) * 8)) & 0xFF;
-        // std::string s = std::format("{:x}", output[i]);
-    }
-    wait_for_ready();
-    esp_err_t ret = spi_flash_.writePage(tx_data, 0, 0);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "AHHHHH. Failed writing metadata. Error %d", ret);
-    } else {
-        ESP_LOGI(TAG, "Wrote metadata successfully!");
-    }
-    return ret;
+    // erase block first, then rewrite metadata
+    nuke();
+    return init_meta(page_addr, column_addr, wsg_id, dac_bias);
 }
 
 esp_err_t WSG_MEM::read_meta(std::vector<uint8_t>& rx_data)
 {
-    esp_err_t ret = spi_flash_.readPage(rx_data, 0, 0);
+    vTaskDelay(10);
+    esp_err_t ret = spi_flash_.readPage(rx_data, META_PAGE, 0);
     // for (uint8_t i : rx_data) {
     //     ESP_LOGI(TAG, "Hi: %u", i);
     // }
@@ -306,8 +298,17 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     // wait_for_ready();
 
     std::vector<uint8_t> metadata(METADATA_SIZE);
-    // here add logic about if the meta is not initialized, initialize it. or maybe thats in init.
+    ESP_LOGI(TAG, "Reading metadata");
     ret = read_meta(metadata);
+
+    meta_initialized = !meta_empty(metadata);
+    if (!meta_initialized) {
+        ESP_LOGI(TAG, "Initializing meta");
+        init_meta(FIRST_PAGE, 0, WSG_ID, DAC_BIAS);
+        meta_initialized = true;
+        read_meta(metadata);
+    }
+
     for (int i = 0; i < METADATA_SIZE; i++) {
         ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
     }
@@ -339,8 +340,8 @@ esp_err_t WSG_MEM::reset()
         wait_for_ready();
     }
     wait_for_ready();
-    ESP_LOGI(TAG, "Updating metadata with page 1, column 0");
-    ret = update_meta(1, 0);
+    ESP_LOGI(TAG, "Updating metadata with page 1, column 0 in second block");
+    ret = update_meta(FIRST_PAGE, 0);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to update metadata.");
@@ -357,15 +358,16 @@ void WSG_MEM::nuke()
     spi_flash_.eraseBlock(0);
     // wait_for_ready();
 }
-esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, int i)
+esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs)
 {
     esp_err_t ret;
-    if ((i % METADATA_UPDATE_INT) == 0 && i != 0) {
+    if ((last_page % METADATA_UPDATE_INT) == 0) {
+        ESP_LOGI(TAG, "Updating metadata");
         update_meta(last_page, last_column);
-        wait_for_ready();
+        vTaskDelay(10);
     }
-
-    if (((last_column + CHUNK_SIZE) >= 2046)) {
+    ESP_LOGI(TAG, "Writing to page: %0x, column %0x", last_page, last_column);
+    if (((last_column + CHUNK_SIZE) >= 2047)) {
         last_page++;
         last_column = 0;
         ESP_LOGI(TAG, "Incremented Page: %0x", last_page);
@@ -374,7 +376,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs, int i)
         ESP_LOGE(TAG, "Page out of bounds :(. Addr: %0x", last_page);
         return ESP_ERR_INVALID_SIZE;
     } else {
-        ret = write(wsgs, i, last_column);
+        ret = write(wsgs, last_page, last_column);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to write data: %d", ret);
             return ret;
@@ -395,7 +397,7 @@ esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
     {
         wait_for_ready();
         vTaskDelay(2);
-        ret = indiv_write(wsg_data, i);
+        ret = indiv_write(wsg_data);
         if (ret != ESP_OK) {
             return ret;
         }
