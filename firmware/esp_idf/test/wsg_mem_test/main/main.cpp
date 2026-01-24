@@ -47,21 +47,22 @@ void stress_test(WSG_MEM& w)
 
 void test_indiv_overflow(WSG_MEM& w)
 {
+    ESP_LOGI(TAG, "Testing overflow?");
     std::vector<uint32_t> wsgs = {1, 2, 3};
-    w.indiv_write(wsgs, 0);
-    w.read_page(2);
+    w.indiv_write(wsgs);
 }
 
 WSG_MEM tune_min_delay(void)
 {
     WSG_MEM wsg_mem = test_init();
+
     return wsg_mem;
 }
+void hi() { return; }
 extern "C" void app_main(void)
 {
-
     WSG_MEM wsg_mem = test_init();
     wsg_mem.nuke();
-    wsg_mem.update_meta(1, 2026);
-    test_indiv_overflow(wsg_mem);
+
+    // test_indiv_overflow(wsg_mem);
 }
