@@ -3,6 +3,7 @@
 **/.vscode/
 *.lock
 .DS_Store
+**/.idea/
 
 
 # Digi Xbee POSIX/digiapix executables
