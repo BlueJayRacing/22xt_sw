@@ -1,10 +1,19 @@
+/* ---------------------------------------
+Description: A block to control the main board
+    esp32. basically a communication peripheral
+    to talk between the wsg and teensy.
+    
+    On startup the teensy can send some 
+    opcodes to the esp32 to do certain 
+    functions.
+--------------------------------------- */
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <spi_ntp.hpp>
 #include <spi_slave.h>
 #include <stdio.h>
 #include <udp_server.hpp>
-
+#include <driveSensorSetup.hpp>
 
 // Goals: 
 // teensy sends "opcodes" to the esp to run arbrirary functions (this gives the option to extend what the esp can do)
@@ -12,7 +21,8 @@
 static const char* TAG = "main";
 // templates
 void startup(void);
-esp_err_t wsg_read_pass();
+esp_err_t functional_loop(spi_host_device_t spi_host);
+esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg);
 
 extern "C" void app_main(void)
 {
@@ -33,21 +43,32 @@ void startup(void){
         ESP_LOGE(TAG, "Failed to sync: %d", err);
     }
 
-    // Wait for transmission from the teensy
+    // start transmission loop for teensy to call functions
+    err = functional_loop(spi_host);
+
+} //end startup
+
+/* ---------------------------------------
+    Loop for the teensy to call functions on the esp using the correct opcode transmitted through SPI.
+    - 0x04: wsg read-pass loop
+    - 0x05: wsg calibration
+    - 0xFF: Stop esp32
+--------------------------------------- */
+esp_err_t functional_loop(spi_host_device_t spi_host){
     bool run_while = true;
     while (run_while){
         std::array<uint8_t, 1> dummy_buf = {0};
         std::array<uint8_t, 1> rx_buf_opcode;
         spi_slave_transaction_t teensy_optrans;
         spi_slave_transaction_t * pteensy_optrans = &teensy_optrans;
-        trans3.flags = 0;
-        trans3.length = dummy_buf.size() << 3;
-        trans3.tx_buffer = dummy_buf.data();
-        trans3.rx_buffer = rx_buf_opcode.data(); //storing an 8-bit opcode
-        trans3.user = NULL;
+        teensy_optrans.flags = 0;
+        teensy_optrans.length = dummy_buf.size() << 3;
+        teensy_optrans.tx_buffer = dummy_buf.data();
+        teensy_optrans.rx_buffer = rx_buf_opcode.data(); //storing an 8-bit opcode
+        teensy_optrans.user = NULL;
         
         // Get the opcode from the teensy
-        esp_err_t err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
+        err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
         if (err == ESP_OK){
             ESP_LOGI(TAG, "SPI transmitted succesfully");
         } else {
@@ -56,11 +77,16 @@ void startup(void){
 
         // switch based on the opcode to call some function
         switch (rx_buf_opcode[0]) {
-        case 4: // Read from udp the wsg and then pass on through spi
+        case 0x04: // Read from udp the wsg and then pass on through spi
             ESP_LOGI(TAG, "Starting wsg read-pass");
             uint8_t num_wsg = 1;
             wsg_read_pass(spi_host, num_wsg);
         break;
+        case 0x05: // Read from udp the wsg and then pass on through spi
+            ESP_LOGI(TAG, "Starting calibration");
+            //TODO: add calibration function
+        break;
+        
 
         case 0xFF:
             run_while = false;
@@ -71,27 +97,56 @@ void startup(void){
         break;
         }
     }
-
-
-} //end startup
+}// end functional loop
 
 // Read data from the wsgs and pass it to the teensy through spi
 esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg){
     UdpServer server;
-    server.initialize_wifi_connection();
-    server.initialize_socket();
+    esp_err_t err = server.initialize_wifi_connection();
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "WIFI init failed %d", err);
+        return err;
+    }
+    err = server.initialize_socket();
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "socket init failed %d", err);
+        return err;
+    }
 
     //TODO: Time sync with the wsgs
-    start_server_timesync_loop();
-
-
+    start_server_timesync_loop(); //?is this correct?
 
 
     // Start reading and passing from the wsgs
-    Message * msg = server.recv_data();
-        if (msg != nullptr) {
-            //TODO: Deal with the msg
+    ESP_LOGI(TAG, "Starting communication with wsg and teensy")
+    while (1){
+        Message * msg = server.recv_data();
+        if (msg == nullptr) {
+            continue;
         }
 
+        wsg_data_t wsg_data;
 
-}
+        //TODO: add the udp "read" part here
+
+
+        // "pass" onto the teensy
+        std::array<uint8_t, sizeof(wsg_data_t)> wsg_buf = serialize_wsg_data(wsg_data);
+        std::array<uint8_t, 1> rx_buf;
+        spi_slave_transaction_t wsg_trans;
+        spi_slave_transaction_t * pwsg_trans = &wsg_trans;
+        wsg_trans.flags = 0;
+        wsg_trans.length = wsg_buf.size() << 3;
+        wsg_trans.tx_buffer = wsg_buf.data(); // Storing the wsg_datas
+        wsg_trans.rx_buffer = rx_buf.data(); // Stores any signals from the teensy, e.g. 0xFF stop signal.
+        wsg_trans.user = NULL;
+        
+        err = spi_slave_transmit(spi_host, pwsg_trans, portMAX_DELAY); // Transmit the wsg to the teensy
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed WSG pass: %d", err);
+        }
+        if (rx_buf[0] = 0xFF){ // Stop signal from the teensy
+            break;
+        }
+    }
+}// end wsg_read_pass
