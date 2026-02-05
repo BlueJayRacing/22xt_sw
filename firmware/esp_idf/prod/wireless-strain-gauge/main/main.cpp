@@ -1,42 +1,45 @@
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <driveSensorSetup.hpp>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <stdio.h>
 #include <udp_client.hpp>
-#include <driveSensorSetup.hpp>
-#include <algorithm>
+#include <vector>
+#include <wsg_mem.hpp>
 
+#define SPI_MOSI_PIN 18
+#define SPI_SCLK_PIN 30
 
-#define SPI_MOSI_PIN    18
-#define SPI_SCLK_PIN    30
-
-static const char* TAG = "main";
-static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1, drive_cfg_t::STRAIN_GAUGE_2};
+static const char* TAG                           = "main";
+static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1,
+                                                    drive_cfg_t::STRAIN_GAUGE_2};
 
 QueueHandle_t flash_mem_q;
 TaskHandle_t write_handle;
 UBaseType_t sem_val = 1;
 UdpClient client;
+WSG_MEM wsg_mem;
 int dac_bias = -1;
 
 void startupDrive(void);
-void vTaskFlashWrite(void * pvParameter);
+void vTaskFlashWrite(void* pvParameter);
 esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr);
-void vTaskDataProcessing(void * pvParameter);
+void vTaskDataProcessing(void* pvParameter);
 
-extern "C" void app_main(void)
+extern "C" void app_main(void) { startupDrive(); }
+
+void startupDrive(void)
 {
-    startupDrive();
-}
-
-void startupDrive(void) {
     // stall till udp client startup
     SocketHandler socket_handle;
 
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
-    spi_cfg.mosi_io_num = GPIO_NUM_31;
-    spi_cfg.miso_io_num = GPIO_NUM_32;
-    spi_cfg.sclk_io_num = GPIO_NUM_30;
+    spi_cfg.mosi_io_num   = GPIO_NUM_31;
+    spi_cfg.miso_io_num   = GPIO_NUM_32;
+    spi_cfg.sclk_io_num   = GPIO_NUM_30;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
@@ -61,34 +64,31 @@ void startupDrive(void) {
     // read wsg num from flash
     // read dac biases from flash
 
+    wsg_mem.read_and_interpret_meta();
+
     // start data queue for flash
-    flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t *));
+    flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
 
     // should we wait for startup message from main board
 
-    // the other codes either activates calibration from pi or it activates drive, we can assume drive but it would be interesting to also think about cal
+    // the other codes either activates calibration from pi or it activates drive, we can assume drive but it would be
+    // interesting to also think about cal
 
     // start tasks
-    xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1<<8), NULL, 2, &write_handle, (UBaseType_t) 0);
-    xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1<<8), NULL, 1, NULL, (UBaseType_t) 1);
+    xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 8), NULL, 2, &write_handle,
+                            (UBaseType_t)0);
+    xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 8), NULL, 1, NULL, (UBaseType_t)1);
 }
 
 // task for reading data/publishing udp
-void vTaskDataProcessing(void * pvParameter) {
+void vTaskDataProcessing(void* pvParameter)
+{
 
-        // sensor init
-    ads1120_init_param_t ads1120_params = {
-        .cs_pin = GPIO_NUM_38,
-        .drdy_pin = GPIO_NUM_NC,
-        .spi_host = SPI2_HOST
-    };
+    // sensor init
+    ads1120_init_param_t ads1120_params = {.cs_pin = GPIO_NUM_38, .drdy_pin = GPIO_NUM_NC, .spi_host = SPI2_HOST};
 
     ad5626_init_param_t ad5626_params = {
-        .cs_pin = GPIO_NUM_37,
-        .ldac_pin = GPIO_NUM_NC,
-        .clr_pin = GPIO_NUM_NC,
-        .spi_host = SPI2_HOST
-    };
+        .cs_pin = GPIO_NUM_37, .ldac_pin = GPIO_NUM_NC, .clr_pin = GPIO_NUM_NC, .spi_host = SPI2_HOST};
 
     driveSensorSetup sensors;
     sensors.init(ads1120_params, ad5626_params);
@@ -98,7 +98,9 @@ void vTaskDataProcessing(void * pvParameter) {
     int array_ct = 0;
     std::array<wsg_data_t, 6> udp_data_buf;
 
-    wsg_data_t * sample;
+    wsg_data_t* sample = (wsg_data_t*)malloc(sizeof(wsg_data_t));
+    sample->dac_bias   = wsg_mem.dac_bias;
+    sample->wsg_id     = wsg_mem.wsg_id;
 
     while (1) {
         sample = new wsg_data_t();
@@ -110,7 +112,7 @@ void vTaskDataProcessing(void * pvParameter) {
         sensors.measure(true, &measure);
 
         sample->timestamp = get_timestamp();
-        sample->dac_bias = dac_bias;
+        sample->dac_bias  = dac_bias;
 
         drive_cfg_t drive_cfg;
         drive_cfg.mode = drive_cfg_t::MEASURING_MODE;
@@ -123,52 +125,50 @@ void vTaskDataProcessing(void * pvParameter) {
             sample->sample[i] = measure.adc_value;
         }
 
-        if(xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
+        if (xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
             ESP_LOGW(TAG, "failed to add sample to queue");
         }
 
-        if(!uxQueueSpacesAvailable(flash_mem_q)) {
+        if (!uxQueueSpacesAvailable(flash_mem_q)) {
             xTaskNotifyGiveIndexed(write_handle, sem_val);
         }
 
         // other stuff
         memcpy(&udp_data_buf + array_ct, sample, sizeof(wsg_data_t));
         array_ct++;
-        
+
         if (array_ct == 6) {
             serialize_msg_and_publish(udp_data_buf);
             array_ct = 0;
         }
     }
-
 }
-
-
 
 // should we use a handler?
 // task to write for flash
-void vTaskFlashWrite(void * pvParameter) {
+void vTaskFlashWrite(void* pvParameter)
+{
     while (1) {
         uint32_t notif_val = ulTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY);
-        if(notif_val != 1) {
+        if (notif_val != 1) {
             continue;
         }
-    
-        wsg_data_t sample;
 
-        while (xQueueReceive(flash_mem_q, &sample, 10) == pdPASS) {
+        wsg_data_t* sample = new wsg_data_t();
+
+        while (xQueueReceive(flash_mem_q, sample, 10) == pdPASS) {
             // put stuff in write format
-
+            std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
             // delete sample ptr
-            delete &sample;
+            delete sample;
+            wsg_mem.indiv_write(buf);
+            // write data to flash in one go or not
         }
-
-        // write data to flash in one go or not
     }
 }
 
-
-esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr) {
+esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr)
+{
     std::array<uint8_t, MESSAGE_MAX_LEN> send_data = {0};
 
     std::array<uint8_t, 19> temp_d;
@@ -178,11 +178,10 @@ esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr) {
     }
 
     esp_err_t err = client.publish_data(get_timestamp(), send_data, send_data.size());
-    
+
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "failed to serialize and publish data");
     }
 
     return err;
-
 }
