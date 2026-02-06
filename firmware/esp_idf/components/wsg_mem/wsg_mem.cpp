@@ -5,7 +5,7 @@
 #include <cstring> // memset
 
 #include <driver/gpio.h>
-#include <driver/spi_master.h>
+
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,21 +13,16 @@
 #include <sys/time.h> // gettimeofday
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
 
-#include <fstream>
-#include <iostream>
+// #include <fstream>
+// #include <iostream>
 
-#include "esp_check.h"
 #include "esp_event.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
+#include "include/wsg_mem.hpp"
 #include <esp_system.h>
 
-#include "wsg_mem.hpp"
 static const char* TAG = "wsg_mem";
 
 WSG_MEM::WSG_MEM() { init(); }
@@ -53,7 +48,12 @@ esp_err_t WSG_MEM::wait_for_ready(int timeout)
 
 bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
 {
-    return std::all_of(meta.cbegin(), meta.cend(), [](uint8_t i) { return i == 255; });
+    for (int i = 0; i < METADATA_SIZE; i++) {
+        if (meta[i] != 255) {
+            return false;
+        }
+    }
+    return true;
 }
 
 esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint32_t dac_bias_)
@@ -91,6 +91,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     }
     return ret;
 }
+
 esp_err_t WSG_MEM::init()
 {
     ESP_LOGI(TAG, "Initializing flash memory");
@@ -140,13 +141,13 @@ std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data
         for (int i = 0; i < 8; i++) {
             w.time |= ((uint64_t)rx_data[base + i] << ((7 - i) * 8));
         }
-        uint32_t wsg = 0;
+        uint16_t wsg = 0;
         int ij       = base + 8;
         for (int i = 0; i < 3; i++) {
             wsg = 0;
-            for (int j = 0; j < 4; j++) {
-                ij = base + 8 + (4 * i) + j;
-                wsg |= ((uint32_t)rx_data[ij] << ((3 - j) * 8));
+            for (int j = 0; j < 2; j++) {
+                ij = base + 8 + (2 * i) + j;
+                wsg |= ((uint16_t)rx_data[ij] << ((1 - j) * 8));
             }
             w.wsgs[i] = wsg;
         }
@@ -156,7 +157,7 @@ std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data
     return wsgs;
 }
 
-std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint32_t>& wsgs)
+std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint16_t>& wsgs)
 {
     //
     // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
@@ -170,32 +171,35 @@ std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint32_t>& wsgs)
 
     // splitting time into 8 bytes
     for (int i = 0; i < 8; i++) {
-        output[i]     = (time >> ((7 - i) * 8)) & 0xFF;
-        std::string s = std::format("{:x}", output[i]);
+        output[i] = (time >> ((7 - i) * 8)) & 0xFF;
+        // std::string s = std::format("{:x}", output[i]);
     }
     // splitting wsg data
     for (int i = 0; i < 3; i++) {
-        uint32_t wsg = wsgs[i];
+        uint16_t wsg = wsgs[i];
         int ij;
-        for (int j = 0; j < 4; j++) {
-            ij         = 8 + (4 * i) + j;
-            output[ij] = (wsg >> ((3 - j) * 8)) & 0xFF;
+        for (int j = 0; j < 2; j++) {
+            ij = 8 + (2 * i) + j;
+            // initial value of 8 from time
+            // +2 bytes for every wsg read
+            // + j for every one of the two
+            output[ij] = (wsg >> ((1 - j) * 8)) & 0xFF;
         }
     }
 
     return output;
 }
 
-esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
+esp_err_t WSG_MEM::write(std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
-    // std::vector<uint8_t> tx_data = format_send_data(wsgs);
-    std::vector<uint8_t> tx_data = {1, 2, 3};
+    std::vector<uint8_t> tx_data = format_send_data(wsgs);
+    // std::vector<uint8_t> tx_data = {1, 2, 3};
     ESP_LOGI(TAG, "Writing page");
 
-    for (int i = 0; i < 3; i++) { // instead of 3 should be chunk size
-        std::string s = std::format("{:x}", tx_data[i]);
-        // ESP_LOGI(TAG, "Data in hex %s", s.c_str());
+    for (int i = 0; i < CHUNK_SIZE; i++) { // instead of 3 should be chunk size
+        // std::string s = std::format("{:x}", tx_data[i]);
+        //  ESP_LOGI(TAG, "Data in hex %s", s.c_str());
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
     }
     vTaskDelay(50);
@@ -209,50 +213,50 @@ esp_err_t WSG_MEM::write(std::vector<uint32_t>& wsgs, uint32_t page_addr, uint16
     return ESP_OK;
 }
 
-void WSG_MEM::read_page(uint32_t page_addr)
-{
-    vTaskDelay(100);
-    // wait_for_ready();
-    std::vector<uint8_t> rx_data(30);
-    ESP_LOGI(TAG, "read page %u", page_addr);
-    spi_flash_.readPage(rx_data, page_addr, 0);
-    for (uint8_t i : rx_data) {
-        std::string s = std::format("{:x}", i);
-        ESP_LOGI(TAG, "Data in hex %s", s.c_str());
-        // ESP_LOGI(TAG, "Hi: %u", i);
-    }
-}
-esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data)
-{
+// void WSG_MEM::read_page(uint32_t page_addr)
+// {
+//     vTaskDelay(100);
+//     // wait_for_ready();
+//     std::vector<uint8_t> rx_data(30);
+//     ESP_LOGI(TAG, "read page %u", page_addr);
+//     spi_flash_.readPage(rx_data, page_addr, 0);
+//     for (uint8_t i : rx_data) {
+//         std::string s = std::format("{:x}", i);
+//         ESP_LOGI(TAG, "Data in hex %s", s.c_str());
+//         // ESP_LOGI(TAG, "Hi: %u", i);
+//     }
+// }
+// esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data)
+// {
 
-    // read first page and figure out what last page/column is _
-    ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", last_page, last_column);
-    esp_err_t ret;
-    ret = read_and_interpret_meta();
-    vTaskDelay(80);
+//     // read first page and figure out what last page/column is _
+//     ESP_LOGI(TAG, "working?? read_all? hello? page addr %u, column %u", last_page, last_column);
+//     esp_err_t ret;
+//     ret = read_and_interpret_meta();
+//     vTaskDelay(80);
 
-    for (uint32_t i = 1; i < page_addr + 1; i++) {
-        ret = spi_flash_.readPage(rx_data, i, column_addr);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "failed. :(). Page number %lu, error %d", i, ret);
-            return ret;
-        }
-        ESP_LOGI(TAG, "Current read page number: %lu", i);
-        for (int j = 0; j < CHUNK_SIZE; j++) {
-            ESP_LOGI(TAG, "Read data %d", rx_data[j]);
-        }
-        std::vector<uint8_t> chunk(rx_data.begin(), rx_data.begin() + CHUNK_SIZE);
-        std::vector<wsg_data> wsgs = interpret_read_data(chunk);
-        for (wsg_data w : wsgs) {
-            ESP_LOGI(TAG, "Time: %llu", w.time);
-            for (int j = 0; j < 3; j++) {
-                ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
-            }
-        }
-        vTaskDelay(80);
-    }
-    return ret;
-}
+//     for (uint32_t i = 1; i < page_addr + 1; i++) {
+//         ret = spi_flash_.readPage(rx_data, i, column_addr);
+//         if (ret != ESP_OK) {
+//             ESP_LOGE(TAG, "failed. :(). Page number %lu, error %d", i, ret);
+//             return ret;
+//         }
+//         ESP_LOGI(TAG, "Current read page number: %lu", i);
+//         for (int j = 0; j < CHUNK_SIZE; j++) {
+//             ESP_LOGI(TAG, "Read data %d", rx_data[j]);
+//         }
+//         std::vector<uint8_t> chunk(rx_data.begin(), rx_data.begin() + CHUNK_SIZE);
+//         std::vector<wsg_data> wsgs = interpret_read_data(chunk);
+//         for (wsg_data w : wsgs) {
+//             ESP_LOGI(TAG, "Time: %llu", w.time);
+//             for (int j = 0; j < 3; j++) {
+//                 ESP_LOGI(TAG, "WSG Values: %lu", (unsigned long)w.wsgs[j]);
+//             }
+//         }
+//         vTaskDelay(80);
+//     }
+//     return ret;
+// }
 
 void WSG_MEM::interpret_meta_data(std::vector<uint8_t>& rx_data)
 {
@@ -321,33 +325,33 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     return ret;
 }
 
-esp_err_t WSG_MEM::reset()
-{
-    esp_err_t ret;
-    ESP_LOGI(TAG, "Reading and interpreting metadata to find last page: %lld", last_page);
-    read_and_interpret_meta();
-    int last_block = last_page / block_size;
-    wait_for_ready();
+// esp_err_t WSG_MEM::reset()
+// {
+//     esp_err_t ret;
+//     ESP_LOGI(TAG, "Reading and interpreting metadata to find last page: %lld", last_page);
+//     read_and_interpret_meta();
+//     int last_block = last_page / block_size;
+//     wait_for_ready();
 
-    for (int i = 0; i < last_block + 1; i++) {
-        spi_flash_.enableWrite();
-        wait_for_ready();
-        ESP_LOGI(TAG, "Erasing block: %i", i);
-        ret = spi_flash_.eraseBlock(i);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to erase block: %d. Block number: %d", ret, i);
-        }
-        wait_for_ready();
-    }
-    wait_for_ready();
-    ESP_LOGI(TAG, "Updating metadata with page 1, column 0 in second block");
-    ret = update_meta(FIRST_PAGE, 0);
+//     for (int i = 0; i < last_block + 1; i++) {
+//         spi_flash_.enableWrite();
+//         wait_for_ready();
+//         ESP_LOGI(TAG, "Erasing block: %i", i);
+//         ret = spi_flash_.eraseBlock(i);
+//         if (ret != ESP_OK) {
+//             ESP_LOGE(TAG, "Failed to erase block: %d. Block number: %d", ret, i);
+//         }
+//         wait_for_ready();
+//     }
+//     wait_for_ready();
+//     ESP_LOGI(TAG, "Updating metadata with page 1, column 0 in second block");
+//     ret = update_meta(FIRST_PAGE, 0);
 
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to update metadata.");
-    }
-    return ret;
-}
+//     if (ret != ESP_OK) {
+//         ESP_LOGE(TAG, "Failed to update metadata.");
+//     }
+//     return ret;
+// }
 
 void WSG_MEM::nuke()
 {
@@ -358,7 +362,7 @@ void WSG_MEM::nuke()
     spi_flash_.eraseBlock(0);
     // wait_for_ready();
 }
-esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs)
+esp_err_t WSG_MEM::indiv_write(std::vector<uint16_t>& wsgs)
 {
     esp_err_t ret;
     if ((last_page % METADATA_UPDATE_INT) == 0) {
@@ -386,7 +390,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint32_t>& wsgs)
     return ESP_OK;
 }
 
-esp_err_t WSG_MEM::cont_write(std::vector<uint32_t>& wsg_data)
+esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
 {
 
     esp_err_t ret;
