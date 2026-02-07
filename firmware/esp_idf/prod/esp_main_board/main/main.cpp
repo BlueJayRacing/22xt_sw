@@ -68,7 +68,7 @@ esp_err_t functional_loop(spi_host_device_t spi_host){
         teensy_optrans.user = NULL;
         
         // Get the opcode from the teensy
-        err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
+        esp_err_t err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
         if (err == ESP_OK){
             ESP_LOGI(TAG, "SPI transmitted succesfully");
         } else {
