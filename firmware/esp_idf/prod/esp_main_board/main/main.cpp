@@ -29,7 +29,7 @@ extern "C" void app_main(void) { startup(); }
 void startup(void)
 {
     // Choose spi host
-    spi_host_device_t spi_host = SPI1_HOST;
+    spi_host_device_t spi_host = SPI2_HOST; // 2 instead of 1 bc on website says we should generally use not 1
 
     // Time sync with the teensy
     // SPI also gets initialized via this
@@ -115,6 +115,7 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
 
     // TODO: Time sync with the wsgs
     start_server_timesync_loop(); //?is this correct?
+    // I believe so because wifi already initialized so now all it (should) have to do is start the loop
 
     // Start reading and passing from the wsgs
     ESP_LOGI(TAG, "Starting communication with wsg and teensy");
@@ -126,12 +127,13 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         if (msg == nullptr) {
             continue;
         }
+        // correct me if im wrong but ^ seems like all we need
 
         // "pass" onto the teensy
         // data is already serialized when recieved so we don't need to serialize again
 
         std::array<uint8_t, 1> rx_buf;
-        spi_slave_transaction_t wsg_trans;
+        spi_slave_transaction_t wsg_trans   = {0};
         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
         wsg_trans.flags                     = 0;
         wsg_trans.length                    = msg->payload_len << 3;
