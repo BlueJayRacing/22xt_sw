@@ -1,16 +1,16 @@
 #include <assert.h>
+#include <cstring>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <stdio.h>
 #include <test.hpp>
-#include <cstring>
 
 #include <w25n04kv.hpp>
 
 #define SPI2_MOSI_PIN 18
 #define SPI2_MISO_PIN 20
 #define SPI2_SCLK_PIN 19
-
+#define TEST_LENGTH   12
 W25N04KV spi_flash_;
 
 static const char* TAG = "main";
@@ -22,7 +22,7 @@ extern "C" void app_main(void)
     // test.testW25N04KV();
 
     esp_err_t ret;
-    
+
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
@@ -35,8 +35,8 @@ extern "C" void app_main(void)
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin = GPIO_NUM_1;
-    flash_init_params.wp_pin = GPIO_NUM_NC;
+    flash_init_params.cs_pin   = GPIO_NUM_1;
+    flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
     ESP_LOGI(TAG, "Initialized SPI Bus");
@@ -49,12 +49,12 @@ extern "C" void app_main(void)
         return;
     }
 
-    std::vector<uint8_t> tx_data(100);
-    std::vector<uint8_t> rx_data(100);
+    std::vector<uint8_t> tx_data(TEST_LENGTH);
+    std::vector<uint8_t> rx_data(TEST_LENGTH);
 
     std::srand(esp_cpu_get_cycle_count());
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < TEST_LENGTH; i++) {
         tx_data.at(i) = rand() % 255;
     }
 
@@ -68,37 +68,39 @@ extern "C" void app_main(void)
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
 
-    uint32_t page_address = 0b00000010000000000; //std::rand() % W25N04KV::NUM_PAGES;
+    uint32_t page_address = 0b00000000000010; // std::rand() % W25N04KV::NUM_PAGES;
 
     // 0xxxxx00
 
-    ESP_LOGI(TAG, "Page address: %d", (int) page_address);
+    ESP_LOGI(TAG, "Page address: %d", (int)page_address);
 
     ESP_LOGI(TAG, "Erasing page");
 
-    // spi_flash_.eraseBlock(page_address);// & 0x1FFC0);
+    spi_flash_.eraseBlock(page_address); // & 0x1FFC0);
 
-    vTaskDelay(1);
+    vTaskDelay(100);
 
     ESP_LOGI(TAG, "Writing page");
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < TEST_LENGTH; i++) {
         ESP_LOGI(TAG, "Write data %d", tx_data[i]);
-        ESP_LOGI(TAG, "RX data %d", rx_data[i]);
+        // ESP_LOGI(TAG, "RX data %d", rx_data[i]);
     }
 
-    spi_flash_.writePage(tx_data, page_address, 0);
+    spi_flash_.writePage(tx_data, page_address, 1);
 
     spi_flash_.printStatusReg();
 
     int k = 1;
     for (int i = 0; i < k; i++) {
-        vTaskDelay(5);
-        spi_flash_.readPage(rx_data, page_address);
-        for (int i = 0; i < 100; i++) {
+        vTaskDelay(100);
+        spi_flash_.readPage(rx_data, page_address, 0);
+        for (int i = 0; i < TEST_LENGTH; i++) {
             ESP_LOGI(TAG, "Read data %d", rx_data[i]);
         }
     }
+    vTaskDelay(100);
+    spi_flash_.eraseBlock(page_address);
 
     ESP_LOGI(TAG, "Initialized SPI Flash");
 }

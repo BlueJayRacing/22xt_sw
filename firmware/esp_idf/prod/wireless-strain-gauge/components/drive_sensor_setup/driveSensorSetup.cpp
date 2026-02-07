@@ -11,17 +11,19 @@ int min_(int a, int b);
 
 int max_(int a, int b);
 
-std::array<uint8_t, 4> uint32_to_arr(uint32_t val) {
+std::array<uint8_t, 4> uint32_to_arr(uint32_t val)
+{
     std::array<uint8_t, 4> buf = {0};
 
     for (int i = 0; i < 4; i++) {
-        buf[3 - i] = (val >> (i*8)) & 0xFF;
+        buf[3 - i] = (val >> (i * 8)) & 0xFF;
     }
 
     return buf;
 }
 
-std::array<uint8_t, 2> uint16_to_arr(uint16_t val) {
+std::array<uint8_t, 2> uint16_to_arr(uint16_t val)
+{
     std::array<uint8_t, 2> buf = {0};
 
     for (int i = 0; i < 2; i++) {
@@ -31,17 +33,19 @@ std::array<uint8_t, 2> uint16_to_arr(uint16_t val) {
     return buf;
 }
 
-std::array<uint8_t, 8> uint64_to_arr(uint64_t val) {
+std::array<uint8_t, 8> uint64_to_arr(uint64_t val)
+{
     std::array<uint8_t, 8> buf = {0};
 
     for (int i = 0; i < 8; i++) {
-        buf[7 - i] = (val >> (i*8)) & 0xFF;
+        buf[7 - i] = (val >> (i * 8)) & 0xFF;
     }
 
     return buf;
 }
 
-std::array<uint8_t, 19> serialize_wsg_data(wsg_data data) {
+std::array<uint8_t, 19> serialize_wsg_data(wsg_data_t data)
+{
     std::array<uint8_t, 19> buf = {0};
     std::array<uint8_t, 4> byte4_buf;
 
@@ -55,10 +59,10 @@ std::array<uint8_t, 19> serialize_wsg_data(wsg_data data) {
     }
 
     std::array<uint8_t, 2> byte2_buf = {0};
-    //samples
+    // samples
     for (int sg = 0; sg < 3; sg++) {
         byte2_buf = uint16_to_arr(data.sample[sg]);
-    
+
         for (int i = 0; i < 2; i++) {
             buf[5 + i + (sg * 2)] = byte2_buf[i];
         }
@@ -284,7 +288,8 @@ esp_err_t driveSensorSetup::configure(drive_cfg_t new_cfg)
     return ESP_OK;
 }
 
-esp_err_t driveSensorSetup::setDACValue(uint16_t new_dac_bias) {
+esp_err_t driveSensorSetup::setDACValue(uint16_t new_dac_bias)
+{
     new_dac_bias = max_(new_dac_bias, 0);
     new_dac_bias = min_(new_dac_bias, AD5626::MAX_LEVEL_VALUE);
 
