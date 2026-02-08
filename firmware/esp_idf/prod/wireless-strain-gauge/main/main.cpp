@@ -70,7 +70,7 @@ void startupDrive(void)
     flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
 
     // should we wait for startup message from main board
-
+    start_client_timesync_loop();
     // the other codes either activates calibration from pi or it activates drive, we can assume drive but it would be
     // interesting to also think about cal
 
@@ -83,7 +83,6 @@ void startupDrive(void)
 // task for reading data/publishing udp
 void vTaskDataProcessing(void* pvParameter)
 {
-
     // sensor init
     ads1120_init_param_t ads1120_params = {.cs_pin = GPIO_NUM_38, .drdy_pin = GPIO_NUM_NC, .spi_host = SPI2_HOST};
 

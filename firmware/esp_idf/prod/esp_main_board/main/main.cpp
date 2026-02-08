@@ -54,7 +54,7 @@ void startup(void)
 --------------------------------------- */
 esp_err_t functional_loop(spi_host_device_t spi_host)
 {
-    esp_err_t err;
+    esp_err_t err  = ESP_OK;
     bool run_while = true;
     while (run_while) {
         std::array<uint8_t, 1> dummy_buf = {0};
@@ -68,8 +68,8 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
         teensy_optrans.user                      = NULL;
 
         // Get the opcode from the teensy
-        esp_err_t err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
-        if (err == ESP_OK){
+        err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
+        if (err == ESP_OK) {
             ESP_LOGI(TAG, "SPI transmitted succesfully");
         } else {
             ESP_LOGE(TAG, "Failed SPI: %d", err);
@@ -123,7 +123,7 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
     while (1) {
 
         // "Read" from the udp
-        Message* msg = server.recv_data();
+        const Message* msg = server.recv_data();
         if (msg == nullptr) {
             continue;
         }
@@ -131,12 +131,12 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         // "pass" onto the teensy
         // data is already serialized when recieved so we don't need to serialize again
 
-        std::array<uint8_t, msg->payload_len> rx_buf;
+        std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
         spi_slave_transaction_t wsg_trans   = {0};
         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
         wsg_trans.flags                     = 0;
         wsg_trans.length                    = msg->payload_len << 3;
-        wsg_trans.tx_buffer                 = static_cast<void*>(&(msg->payload[0])); // Storing the wsg_datas
+        wsg_trans.tx_buffer                 = &(msg->payload[0]); // Storing the wsg_datas
         wsg_trans.rx_buffer = rx_buf.data(); // Stores any signals from the teensy, e.g. 0xFF stop signal.
         wsg_trans.user      = NULL;
 
