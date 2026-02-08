@@ -4,6 +4,7 @@
 #include <driveSensorSetup.hpp>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
+#include <ntp_udp_client.h>
 #include <stdio.h>
 #include <udp_client.hpp>
 #include <vector>
@@ -17,7 +18,9 @@ static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0,
                                                     drive_cfg_t::STRAIN_GAUGE_2};
 
 QueueHandle_t flash_mem_q;
+// QueueHandle_t pass_q;
 TaskHandle_t write_handle;
+// TaskHandle_t pass_handle;
 UBaseType_t sem_val = 1;
 UdpClient client;
 WSG_MEM wsg_mem;
@@ -68,16 +71,17 @@ void startupDrive(void)
 
     // start data queue for flash
     flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
+    // pass_q = xQueueCreate(6, sizeof(wsg_data_t*));
 
     // should we wait for startup message from main board
     start_client_timesync_loop();
-    // the other codes either activates calibration from pi or it activates drive, we can assume drive but it would be
-    // interesting to also think about cal
 
     // start tasks
     xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 8), NULL, 2, &write_handle,
                             (UBaseType_t)0);
     xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 8), NULL, 1, NULL, (UBaseType_t)1);
+    // xTaskCreatePinnedToCore(vTaskPass2Mainboard, "pass to main board thread", (1 << 8), NULL, 2, &pass_handle,
+    // (UBaseType_t)0);
 }
 
 // task for reading data/publishing udp
@@ -125,15 +129,23 @@ void vTaskDataProcessing(void* pvParameter)
         }
 
         if (xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
-            ESP_LOGW(TAG, "failed to add sample to queue");
+            ESP_LOGW(TAG, "failed to add sample to flash mem queue");
         }
+
+        // if (xQueueSend(pass_q, sample, 0) != pdPASS) {
+        //     ESP_LOGW(TAG, "failed to add sample to pass queue");
+        // }
 
         if (!uxQueueSpacesAvailable(flash_mem_q)) {
+            // Notify the writer to do the writing
             xTaskNotifyGiveIndexed(write_handle, sem_val);
+            // // Notify the passer to pass the data to the esp mainboar
+            // xTaskNotifyGiveIndexed(pass_handle, sem_val);
         }
 
-        // other stuff
-        memcpy(&udp_data_buf + array_ct, sample, sizeof(wsg_data_t));
+        // passing data to the mainboard
+        // are we sure this is the right increment?
+        memcpy(&udp_data_buf + sizeof(wsg_data_t) * array_ct, sample, sizeof(wsg_data_t));
         array_ct++;
 
         if (array_ct == 6) {
@@ -160,11 +172,37 @@ void vTaskFlashWrite(void* pvParameter)
             std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
             // delete sample ptr
             delete sample;
-            wsg_mem.indiv_write(buf);
+            wsg_mem.indiv_write(sample->timestamp, buf);
             // write data to flash in one go or not
         }
     }
 }
+
+// // Pass the wsg data onto the main board esp32
+// void vTaskPass2Mainboard(void* pvParameter){
+//     while (1) {
+//         uint32_t notif_val = ulTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY);
+//         if (notif_val != 1) {
+//             continue;
+//         }
+
+//         wsg_data_t* sample = new wsg_data_t();
+
+//         while (xQueueReceive(flash_mem_q, sample, 10) == pdPASS) {
+//             // put stuff in write format
+//             std::array<uint8_t, 19UL> send_buf = serialize_wsg_data(sample);
+//             // delete sample ptr
+//             delete sample;
+
+//             esp_err_t err = client.publish_data(get_timestamp(), send_buf, send_buf.size());
+
+//             if (err != ESP_OK) {
+//                 ESP_LOGW(TAG, "failed to serialize and publish data");
+//             }
+
+//         }
+//     }
+// }
 
 esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr)
 {

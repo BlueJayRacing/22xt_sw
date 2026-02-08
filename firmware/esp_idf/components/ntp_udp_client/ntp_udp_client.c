@@ -230,6 +230,8 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
     }
 }
 
+
+// Prefer the udp_client functions instead of this
 void wifi_connection()
 {
     nvs_flash_init();

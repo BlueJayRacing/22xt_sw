@@ -25,7 +25,7 @@
 
 static const char* TAG = "wsg_mem";
 
-WSG_MEM::WSG_MEM() { init(); }
+WSG_MEM::WSG_MEM(uint8_t wsg_id_, uint32_t dac_bias_) { init(wsg_id_, dac_bias_); }
 
 esp_err_t WSG_MEM::wait_for_ready(int timeout)
 {
@@ -92,7 +92,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     return ret;
 }
 
-esp_err_t WSG_MEM::init()
+esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias)_
 {
     ESP_LOGI(TAG, "Initializing flash memory");
     spi_bus_config_t spi_cfg;
@@ -124,6 +124,9 @@ esp_err_t WSG_MEM::init()
     wait_for_ready();
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
+    
+    wsg_id = wsg_id_;
+    dac_bias = dac_bias_;
 
     // meta data initialization
     ret = read_and_interpret_meta();
@@ -157,21 +160,17 @@ std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data
     return wsgs;
 }
 
-std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint16_t>& wsgs)
+std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 {
     //
     // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
-    struct timeval cur_time;
-    gettimeofday(&cur_time, NULL);
-    uint64_t time;
-
-    time = (uint64_t)cur_time.tv_sec * 1000000L + (uint64_t)cur_time.tv_usec;
-    ESP_LOGI(TAG, "Current time: %llu", time);
+    
+    ESP_LOGI(TAG, "Current time: %llu", timestamp);
     std::vector<uint8_t> output(CHUNK_SIZE);
 
     // splitting time into 8 bytes
     for (int i = 0; i < 8; i++) {
-        output[i] = (time >> ((7 - i) * 8)) & 0xFF;
+        output[i] = (timestamp >> ((7 - i) * 8)) & 0xFF;
         // std::string s = std::format("{:x}", output[i]);
     }
     // splitting wsg data
@@ -190,7 +189,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(std::vector<uint16_t>& wsgs)
     return output;
 }
 
-esp_err_t WSG_MEM::write(std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
+esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
     std::vector<uint8_t> tx_data = format_send_data(wsgs);
@@ -308,7 +307,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     meta_initialized = !meta_empty(metadata);
     if (!meta_initialized) {
         ESP_LOGI(TAG, "Initializing meta");
-        init_meta(FIRST_PAGE, 0, WSG_ID, DAC_BIAS);
+        init_meta(FIRST_PAGE, 0, wsg_id, dac_bias);
         meta_initialized = true;
         read_meta(metadata);
     }
@@ -362,7 +361,7 @@ void WSG_MEM::nuke()
     spi_flash_.eraseBlock(0);
     // wait_for_ready();
 }
-esp_err_t WSG_MEM::indiv_write(std::vector<uint16_t>& wsgs)
+esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 {
     esp_err_t ret;
     if ((last_page % METADATA_UPDATE_INT) == 0) {
@@ -380,7 +379,7 @@ esp_err_t WSG_MEM::indiv_write(std::vector<uint16_t>& wsgs)
         ESP_LOGE(TAG, "Page out of bounds :(. Addr: %0x", last_page);
         return ESP_ERR_INVALID_SIZE;
     } else {
-        ret = write(wsgs, last_page, last_column);
+        ret = write(timestamp, wsgs, last_page, last_column);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to write data: %d", ret);
             return ret;
