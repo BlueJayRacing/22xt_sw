@@ -68,8 +68,8 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
         teensy_optrans.user                      = NULL;
 
         // Get the opcode from the teensy
-        err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
-        if (err == ESP_OK) {
+        esp_err_t err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
+        if (err == ESP_OK){
             ESP_LOGI(TAG, "SPI transmitted succesfully");
         } else {
             ESP_LOGE(TAG, "Failed SPI: %d", err);
@@ -81,7 +81,7 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
             ESP_LOGI(TAG, "Starting wsg read-pass");
             wsg_read_pass(spi_host, 1);
             break;
-        case 0x05: // Read from udp the wsg and then pass on through spi
+        case 0x05: // Calibrate the strain gauges.
             ESP_LOGI(TAG, "Starting calibration");
             // TODO: add calibration function
             break;
@@ -91,7 +91,7 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
             break;
 
         default: // Wait a bit if nothing happened
-            vTaskDelay(pdMS_TO_TICKS(10));
+            vTaskDelay(pdMS_TO_TICKS(1));
             break;
         }
     }
@@ -99,6 +99,7 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
 } // end functional loop
 
 // Read data from the wsgs and pass it to the teensy through spi
+// also does time sync with wsgs
 esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
 {
     UdpServer server;
@@ -113,7 +114,7 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         return err;
     }
 
-    // TODO: Time sync with the wsgs
+    // TODO: Make sure this actually works like we think it does
     start_server_timesync_loop(); //?is this correct?
     // I believe so because wifi already initialized so now all it (should) have to do is start the loop
 
@@ -121,13 +122,11 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
     ESP_LOGI(TAG, "Starting communication with wsg and teensy");
     while (1) {
 
-        // TODO: add the udp "read" part here
-
+        // "Read" from the udp
         Message* msg = server.recv_data();
         if (msg == nullptr) {
             continue;
         }
-        // correct me if im wrong but ^ seems like all we need
 
         // "pass" onto the teensy
         // data is already serialized when recieved so we don't need to serialize again
