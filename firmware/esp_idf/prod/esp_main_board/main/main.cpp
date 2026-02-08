@@ -131,7 +131,7 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         // "pass" onto the teensy
         // data is already serialized when recieved so we don't need to serialize again
 
-        std::array<uint8_t, msg->payload_len> rx_buf;
+        std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
         spi_slave_transaction_t wsg_trans   = {0};
         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
         wsg_trans.flags                     = 0;

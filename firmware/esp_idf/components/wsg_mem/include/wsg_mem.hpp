@@ -23,15 +23,15 @@ struct wsg_data {
 
 class WSG_MEM {
   public:
-    WSG_MEM();
+    WSG_MEM(uint8_t wsg_id_, uint32_t dac_bias_);
     esp_err_t wait_for_ready(int timeout = 1000);
-    esp_err_t init();
-    esp_err_t write(std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr);
+    esp_err_t init(uint8_t wsg_id_, uint32_t dac_bias_);
+    esp_err_t write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr);
     esp_err_t read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data);
     esp_err_t update_meta(uint32_t page_addr, uint16_t column_addr);
     esp_err_t reset();
     esp_err_t read_and_interpret_meta();
-    esp_err_t indiv_write(std::vector<uint16_t>& wsgs);
+    esp_err_t indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs);
     esp_err_t cont_write(std::vector<uint16_t>& wsg_data);
     esp_err_t init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint32_t dac_bias_);
     esp_err_t read_meta(std::vector<uint8_t>& rx_data);
@@ -43,7 +43,7 @@ class WSG_MEM {
   private:
     uint8_t block_size = (1 << 6);
     std::vector<wsg_data> interpret_read_data(std::vector<uint8_t>& rx_data);
-    std::vector<uint8_t> format_send_data(std::vector<uint16_t>& wsgs);
+    std::vector<uint8_t> format_send_data(uint64_t timestamp, std::vector<uint16_t>& wsgs);
     void interpret_meta_data(std::vector<uint8_t>& rx_data);
     bool meta_empty(std::vector<uint8_t> meta);
 
