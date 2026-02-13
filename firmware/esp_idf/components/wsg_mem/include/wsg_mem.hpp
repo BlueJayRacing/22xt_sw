@@ -46,7 +46,6 @@ class WSG_MEM {
     std::vector<uint8_t> format_send_data(uint64_t timestamp, std::vector<uint16_t>& wsgs);
     void interpret_meta_data(std::vector<uint8_t>& rx_data);
     bool meta_empty(std::vector<uint8_t> meta);
-
     W25N04KV spi_flash_;
     uint32_t last_page   = 1;
     uint16_t last_column = 0;

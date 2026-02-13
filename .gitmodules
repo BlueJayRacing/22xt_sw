@@ -1,3 +1,6 @@
 [submodule "common/nanopb"]
 	path = common/nanopb
 	url = git@github.com:BlueJayRacing/nanopb.git
+[submodule "firmware/nanopb"]
+	path = firmware/nanopb
+	url = https://github.com/BlueJayRacing/nanopb.git
