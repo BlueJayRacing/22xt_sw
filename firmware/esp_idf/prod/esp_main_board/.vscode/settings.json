@@ -1,3 +1,10 @@
 {
-    "idf.currentSetup": "/Users/nikhilmani/esp/esp-idf"
+  "idf.currentSetup": "/Users/nikhilmani/esp/esp-idf",
+  "C_Cpp.default.configurationProvider": "espressif.esp-idf-extension",
+  "clangd.path": "/Users/nikhilmani/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/Users/nikhilmani/School/Baja/22xt_sw/firmware/esp_idf/prod/esp_main_board/build"
+  ]
 }

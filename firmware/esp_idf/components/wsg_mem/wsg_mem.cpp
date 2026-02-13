@@ -92,7 +92,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     return ret;
 }
 
-esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias)_
+esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias_)
 {
     ESP_LOGI(TAG, "Initializing flash memory");
     spi_bus_config_t spi_cfg;
@@ -124,8 +124,8 @@ esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias)_
     wait_for_ready();
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
-    
-    wsg_id = wsg_id_;
+
+    wsg_id   = wsg_id_;
     dac_bias = dac_bias_;
 
     // meta data initialization
@@ -164,7 +164,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<u
 {
     //
     // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
-    
+
     ESP_LOGI(TAG, "Current time: %llu", timestamp);
     std::vector<uint8_t> output(CHUNK_SIZE);
 
@@ -192,7 +192,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<u
 esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
-    std::vector<uint8_t> tx_data = format_send_data(wsgs);
+    std::vector<uint8_t> tx_data = format_send_data(timestamp, wsgs);
     // std::vector<uint8_t> tx_data = {1, 2, 3};
     ESP_LOGI(TAG, "Writing page");
 
@@ -392,7 +392,7 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
 {
 
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     // init();
 
     read_and_interpret_meta();
@@ -400,10 +400,10 @@ esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
     {
         wait_for_ready();
         vTaskDelay(2);
-        ret = indiv_write(wsg_data);
-        if (ret != ESP_OK) {
-            return ret;
-        }
+        // ret = indiv_write(timestamp, wsg_data);
+        // if (ret != ESP_OK) {
+        //     return ret;
+        // }
     }
     return ret;
 }

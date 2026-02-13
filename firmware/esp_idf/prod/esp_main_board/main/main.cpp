@@ -134,10 +134,11 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
         spi_slave_transaction_t wsg_trans   = {0};
         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
-        wsg_trans.flags                     = 0;
-        wsg_trans.length                    = msg->payload_len << 3;
-        wsg_trans.tx_buffer                 = &(msg->payload[0]); // Storing the wsg_datas
-        wsg_trans.rx_buffer = rx_buf.data(); // Stores any signals from the teensy, e.g. 0xFF stop signal.
+
+        wsg_trans.flags     = 0;
+        wsg_trans.length    = msg->payload_len << 3;
+        wsg_trans.tx_buffer = msg->payload.data(); // Storing the wsg_datas
+        wsg_trans.rx_buffer = rx_buf.data();       // Stores any signals from the teensy, e.g. 0xFF stop signal.
         wsg_trans.user      = NULL;
 
         err = spi_slave_transmit(spi_host, pwsg_trans, portMAX_DELAY); // Transmit the wsg to the teensy
