@@ -31,7 +31,7 @@ class SpiWsgRecv {
         SPISettings spi_settings;
 
         wsg_data_t deserialize_message(uint8_t * start);
-
+        
 };
 
 #endif

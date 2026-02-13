@@ -24,6 +24,7 @@
 #include "storage/sd_functions.hpp"
 #include "network/pbudp_functions.hpp"      // Combined PB+UDP thread
 #include "digital/digital_functions.hpp"    // Digital input monitoring
+#include "wsg_streaming/wsg_functions.hpp"
 
 // NEW: Time functions module (our NTP/SRTC updater)
 #include "ntp/time_functions.hpp"
@@ -276,6 +277,8 @@ void setup() {
     baja::led::init(systemState);
     baja::led::startBoot();
 
+    baja::wsg_streaming::initialize(sampleBuffer, fastBuffer);
+
     // Set up the correct time
     setupTime();
     
@@ -429,6 +432,8 @@ void setup() {
         }
     }
 
+    
+
     // Initialize time functions
     baja::time::functions::initialize();
     
@@ -495,6 +500,7 @@ void loop() {
     // receive data from wsg over spi
     // may need to make handler to add it to circle buf
     // TODO: THIS
+    baja::wsg_streaming::process();
     
     // Process SD operations - only if enough samples are available
     // (This is already handled in SDWriter::process())
