@@ -72,3 +72,6 @@ samples/rabbit/my_config.h
 **.pb.c
 
 **/get-docker.sh
+
+#venv
+.venv/

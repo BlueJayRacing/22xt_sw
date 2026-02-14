@@ -9,6 +9,6 @@ message WsgData {
 }
 
 message Wsgs {
-    repeated WsgData data = 1 [(nanopb).min_count = 1, (nanopb).max_count = 6]; // this is the number of wsgs we will send at once
+    repeated WsgData data = 1 [(nanopb).max_count = 6]; // this is the number of wsgs we will send at once
 
 }
