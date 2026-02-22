@@ -80,19 +80,19 @@ void recv_time(spi_slave_transaction_t * trans) {
 }
 
 NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host) {
-    spi_bus_config_t settings;
-    settings.mosi_io_num = 35;
-    settings.miso_io_num = 24;
-    settings.sclk_io_num = 33;
+    spi_bus_config_t settings = {}; 
+    settings.mosi_io_num = 10;
+    settings.miso_io_num = 9;
+    settings.sclk_io_num = 8;
 
     spi_slave_interface_config_t slave_config;
-    slave_config.spics_io_num = 32;
-    slave_config.flags = 0;
+    slave_config.spics_io_num = 21;
+    // slave_config.flags = 0;
     slave_config.queue_size = 4;
     slave_config.mode = 0;
     slave_config.post_setup_cb = &recv_time;
 
-    esp_err_t err = spi_slave_initialize(SPI_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
+    esp_err_t err = spi_slave_initialize(SPI2_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
     switch(err) {
         case ESP_OK:
             ESP_LOGI(TAG, "Initialized spi slave interface");
@@ -114,6 +114,7 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host) {
 }
 
 esp_err_t NTPviaSPI::sync() {
+    ESP_LOGI(TAG, "Sync began");
     std::array<uint8_t, 1> dummy_buf = {0};
     std::array<uint8_t, 8> rx_buf_trans1;
     std::array<uint8_t, 8> rx_buf_trans2;
@@ -121,6 +122,7 @@ esp_err_t NTPviaSPI::sync() {
 
     spi_slave_transaction_t trans1;
     spi_slave_transaction_t * ptrans1 = &trans1;
+    memset(ptrans1, 0, sizeof(spi_slave_transaction_t)); 
     trans1.flags = 0;
     trans1.length = dummy_buf.size() << 3;
     trans1.tx_buffer = dummy_buf.data();
@@ -130,6 +132,7 @@ esp_err_t NTPviaSPI::sync() {
 
     spi_slave_transaction_t trans2;
     spi_slave_transaction_t * ptrans2 = &trans2;
+    memset(ptrans2, 0, sizeof(spi_slave_transaction_t)); 
     trans2.flags = 0;
     trans2.length = dummy_buf.size() << 3;
     trans2.tx_buffer = dummy_buf.data();
@@ -138,6 +141,7 @@ esp_err_t NTPviaSPI::sync() {
 
     spi_slave_transaction_t trans3;
     spi_slave_transaction_t * ptrans3 = &trans3;
+    memset(ptrans3, 0, sizeof(spi_slave_transaction_t)); 
     trans3.flags = 0;
     trans3.length = dummy_buf.size() << 3;
     trans3.tx_buffer = dummy_buf.data();

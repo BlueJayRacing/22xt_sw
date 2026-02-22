@@ -44,6 +44,7 @@ NTPviaSPI::NTPviaSPI(SPIClass * spi_host_, uint8_t cs_pin_, SPISettings settings
 
 int32_t NTPviaSPI::sync() {
     // send msg telling esp to start sync
+    Serial.printf("sync begin\n"); 
 
     // setup spi
     spi_host->beginTransaction(spi_settings);
@@ -52,8 +53,12 @@ int32_t NTPviaSPI::sync() {
     std::array<uint8_t, 1> ret_buf;
 
     uint8_t attempts = 0;
+
+    Serial.printf("setup spi\n"); 
+
     // check if esp is up
     do {
+        Serial.printf("check if esp is up\n"); 
         digitalWrite(cs_pin, LOW);
         spi_host->transfer(send_buf.data(), ret_buf.data(), send_buf.size());
         digitalWrite(cs_pin, HIGH);
@@ -63,6 +68,7 @@ int32_t NTPviaSPI::sync() {
     // err if reached max attempts
 
     // first message
+    Serial.printf("first message\n"); 
     digitalWrite(cs_pin, LOW);
     spi_host->transfer(send_buf.data(), ret_buf.data(), send_buf.size());
     uint64_t t1 = getMicrosecondsSinceEpoch();

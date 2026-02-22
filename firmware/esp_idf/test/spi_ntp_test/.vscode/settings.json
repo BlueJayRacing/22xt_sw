@@ -1,0 +1,12 @@
+{
+    "idf.currentSetup": "/Users/suhuang/.espressif/v5.5.2/esp-idf",
+    "idf.port": "/dev/tty.usbmodem101",
+    "idf.flashType": "UART",
+    "idf.openOcdConfigs": [
+        "board/esp32c6-builtin.cfg"
+    ],
+    "idf.customExtraVars": {
+        "OPENOCD_USB_ADAPTER_LOCATION": "2-1",
+        "IDF_TARGET": "esp32c6"
+    }
+}

@@ -11,8 +11,11 @@ extern "C" void app_main(void)
     NTPviaSPI spi_sync = NTPviaSPI(SPI1_HOST);
     esp_err_t err = spi_sync.sync();
     if(err == ESP_OK) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
         ESP_LOGI(TAG, "Sync completed succesfully");
     } else {
         ESP_LOGE(TAG, "Failed to sync: %d", err);
     }
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }
