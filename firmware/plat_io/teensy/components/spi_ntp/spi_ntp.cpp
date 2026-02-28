@@ -23,7 +23,7 @@ uint64_t buf_to_uint64(std::array<uint8_t, 8> buf) {
 std::array<uint8_t, 8> uint64_to_buf(uint64_t num) {
     std::array<uint8_t, 8> buf;
     for (int i = 0; i < 8; i++) {
-        buf[i] = (num >> (i * 8)) && 0xFF;
+        buf[i] = (num >> (i * 8)) & 0xFF;
     }
 
     return buf;
@@ -49,8 +49,8 @@ int32_t NTPviaSPI::sync() {
     // setup spi
     spi_host->beginTransaction(spi_settings);
 
-    std::array<uint8_t, 1> send_buf = {0x00};
-    std::array<uint8_t, 1> ret_buf;
+    std::array<uint8_t, 8> send_buf = {0x00, 0, 0, 0, 0, 0, 0, 0};
+    std::array<uint8_t, 8> ret_buf;
 
     uint8_t attempts = 0;
 
@@ -60,18 +60,27 @@ int32_t NTPviaSPI::sync() {
     do {
         Serial.printf("check if esp is up\n"); 
         digitalWrite(cs_pin, LOW);
-        spi_host->transfer(send_buf.data(), ret_buf.data(), send_buf.size());
+        spi_host->transfer(send_buf.data(), ret_buf.data(), 8);
         digitalWrite(cs_pin, HIGH);
-        delay(10);
-    } while (ret_buf[0] != 0x01 || ++attempts < MAX_ATTEMPTS);
+        delay(100);
+        
+        if (ret_buf[0] == 0x01) break; 
+        
+    } while (++attempts < MAX_ATTEMPTS);
+
+    if (attempts >= MAX_ATTEMPTS) {
+        Serial.printf("ESP32 failed to respond\n");
+        spi_host->endTransaction();
+        return -1; // Return error
+    }
     
     // err if reached max attempts
 
     // first message
     Serial.printf("first message\n"); 
-    digitalWrite(cs_pin, LOW);
-    spi_host->transfer(send_buf.data(), ret_buf.data(), send_buf.size());
     uint64_t t1 = getMicrosecondsSinceEpoch();
+    digitalWrite(cs_pin, LOW);
+    spi_host->transfer(send_buf.data(), ret_buf.data(), 8);
     digitalWrite(cs_pin, HIGH);
 
     delay(2);
@@ -79,7 +88,7 @@ int32_t NTPviaSPI::sync() {
     digitalWrite(cs_pin, LOW);
     uint64_t t2 = getMicrosecondsSinceEpoch();
     std::array<uint8_t, 8> t2_send_buf = uint64_to_buf(t2);
-    spi_host->transfer(t2_send_buf.data(), ret_buf.data(), t2_send_buf.size());
+    spi_host->transfer(t2_send_buf.data(), ret_buf.data(), 8);
     digitalWrite(cs_pin, HIGH);
 
     delay(2);
@@ -87,9 +96,11 @@ int32_t NTPviaSPI::sync() {
     // send t1
     digitalWrite(cs_pin, LOW);
     std::array<uint8_t, 8> t1_send_buf = uint64_to_buf(t1);
-    spi_host->transfer(t1_send_buf.data(), ret_buf.data(), t1_send_buf.size());
+    spi_host->transfer(t1_send_buf.data(), ret_buf.data(), 8);
     digitalWrite(cs_pin, HIGH);
 
     spi_host->endTransaction();
+
+    return 0; 
 }
 
