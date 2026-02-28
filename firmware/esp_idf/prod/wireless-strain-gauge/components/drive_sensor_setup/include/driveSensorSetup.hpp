@@ -49,7 +49,7 @@ class driveSensorSetup {
   public:
     driveSensorSetup();
     esp_err_t init(ads1120_init_param_t adc_params, ad5626_init_param_t dac_params);
-    esp_err_t zero(void);
+    esp_err_t zero(uint16_t * dac_bias);
     esp_err_t configure(drive_cfg_t new_cfg);
     esp_err_t measure(bool wait_ready, drive_measurement_t* measurement);
     esp_err_t setDACValue(uint16_t new_dac_value);

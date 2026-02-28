@@ -1,9 +1,10 @@
 *.out
 *.o
-**/.vscode/
+**/.vscode
 *.lock
 .DS_Store
 **/.idea/
+**/.pio
 
 
 # Digi Xbee POSIX/digiapix executables

@@ -29,8 +29,6 @@
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
 
-#include <ntp_udp_client.h>
-
 void init_client_wifi(void);
 
 void start_client_timesync_loop(void);

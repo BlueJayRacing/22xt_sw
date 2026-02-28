@@ -25,7 +25,7 @@
 
 static const char* TAG = "wsg_mem";
 
-WSG_MEM::WSG_MEM(uint8_t wsg_id_, uint32_t dac_bias_) { init(wsg_id_, dac_bias_); }
+WSG_MEM::WSG_MEM() {}
 
 esp_err_t WSG_MEM::wait_for_ready(int timeout)
 {
@@ -56,12 +56,20 @@ bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
     return true;
 }
 
-esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint32_t dac_bias_)
+esp_err_t WSG_MEM::set_dac_bias(uint16_t dac_bias) {
+    return init_meta(last_page, last_column, wsg_id, dac_bias);
+}
+
+esp_err_t WSG_MEM::set_wsg_id(uint8_t id) {
+    return init_meta(last_page, last_column, id, dac_bias);
+}
+
+esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_)
 {
     last_page   = page;
     last_column = column;
     wsg_id      = wsg_id_;
-    dac_bias_   = dac_bias_;
+    dac_bias   = dac_bias_;
 
     std::vector<uint8_t> tx_data(METADATA_SIZE);
     // updating first page with metadata
@@ -79,7 +87,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     tx_data[PAGE_COLUMN_META_SIZE] = wsg_id_;
 
     for (int i = PAGE_COLUMN_META_SIZE + 1; i < METADATA_SIZE; i++) {
-        tx_data[i] = (dac_bias_ >> ((3 - (i - (PAGE_COLUMN_META_SIZE + 1))) * 8)) & 0xFF;
+        tx_data[i] = (dac_bias_ >> ((1 - (i - (PAGE_COLUMN_META_SIZE + 1))) * 8)) & 0xFF;
         // splits into individual bits. subtract the page_column +1 because that was the initial value.
     } // multiply by 8 bc its byte and mask to change it into one byte
     wait_for_ready();
@@ -92,7 +100,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     return ret;
 }
 
-esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias)_
+esp_err_t WSG_MEM::init()
 {
     ESP_LOGI(TAG, "Initializing flash memory");
     spi_bus_config_t spi_cfg;
@@ -125,11 +133,12 @@ esp_err_t WSG_MEM::init(uint8_t wsg_id_, uint32_t dac_bias)_
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
     
-    wsg_id = wsg_id_;
-    dac_bias = dac_bias_;
+    // wsg_id = wsg_id_;
+    // dac_bias = dac_bias_;
 
     // meta data initialization
     ret = read_and_interpret_meta();
+
     return ret;
 }
 
@@ -192,7 +201,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<u
 esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
-    std::vector<uint8_t> tx_data = format_send_data(wsgs);
+    std::vector<uint8_t> tx_data = format_send_data(timestamp, wsgs);
     // std::vector<uint8_t> tx_data = {1, 2, 3};
     ESP_LOGI(TAG, "Writing page");
 
@@ -389,22 +398,22 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
     return ESP_OK;
 }
 
-esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
-{
+// esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
+// {
 
-    esp_err_t ret;
-    // init();
+//     esp_err_t ret;
+//     // init();
 
-    read_and_interpret_meta();
-    for (int i = 0; i < 16; i++) // condition is while data is being read? not sure how to do yet
-    {
-        wait_for_ready();
-        vTaskDelay(2);
-        ret = indiv_write(wsg_data);
-        if (ret != ESP_OK) {
-            return ret;
-        }
-    }
-    return ret;
-}
+//     read_and_interpret_meta();
+//     for (int i = 0; i < 16; i++) // condition is while data is being read? not sure how to do yet
+//     {
+//         wait_for_ready();
+//         vTaskDelay(2);
+//         ret = indiv_write(wsg_data);
+//         if (ret != ESP_OK) {
+//             return ret;
+//         }
+//     }
+//     return ret;
+// }
 // esp_err_t WSG_MEM::read_and_send() { std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE); }

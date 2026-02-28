@@ -18,10 +18,11 @@ UdpClient::UdpClient() {
 }
 
 UdpClient::~UdpClient() {
-    // Message * msg;
-    // while(xQueueReceive(recv_queue, msg, 0)) {
-    //     delete &msg;
-    // }
+    Message * msg;
+    // memset(msg, 0, sizeof(*msg));
+    while(xQueueReceive(recv_queue, &msg, 0)) {
+        delete msg;
+    }
 
     esp_event_loop_delete(sender_loop_handle);
 }

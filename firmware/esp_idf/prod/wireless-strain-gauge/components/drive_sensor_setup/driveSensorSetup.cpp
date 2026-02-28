@@ -168,7 +168,7 @@ esp_err_t driveSensorSetup::measure(bool wait_ready, drive_measurement_t* t_meas
  *
  * @return Returns 0 for success or negative error code.
  *******************************************************************************/
-esp_err_t driveSensorSetup::zero(void)
+esp_err_t driveSensorSetup::zero(uint16_t * dac_bias)
 {
     esp_err_t ret;
     bool successful_zero = false;
@@ -206,7 +206,7 @@ esp_err_t driveSensorSetup::zero(void)
             break;
         }
 
-        int16_t new_dac_bias = measurements[0].dac_bias - average_volt_error / measurements[0].gain * 1000;
+        uint16_t new_dac_bias = measurements[0].dac_bias - average_volt_error / measurements[0].gain * 1000;
 
         ESP_LOGI(TAG, "Previous DAC Bias: %d", measurements[0].dac_bias);
         ESP_LOGI(TAG, "Calculated Average Voltage Error: %f", average_volt_error);
@@ -216,6 +216,8 @@ esp_err_t driveSensorSetup::zero(void)
         new_dac_bias = min_(new_dac_bias, AD5626::MAX_LEVEL_VALUE);
 
         ESP_LOGI(TAG, "New DAC Bias: %d", new_dac_bias);
+
+        *dac_bias = new_dac_bias;
 
         dac_.setLevel(new_dac_bias);
         vTaskDelay(1);

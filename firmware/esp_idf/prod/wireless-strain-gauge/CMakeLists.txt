@@ -4,11 +4,15 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
-set(EXTRA_COMPONENT_DIRS    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/wsg_mem ${CMAKE_CURRENT_SOURCE_DIR}/../../components/w25n04kv
-${CMAKE_CURRENT_SOURCE_DIR}/../../components/ad5626 
-${CMAKE_CURRENT_SOURCE_DIR}/../../components/ads1120 
-${CMAKE_CURRENT_SOURCE_DIR}/../../components/udp_client
-${CMAKE_CURRENT_SOURCE_DIR}/../../components/lock_guard)
+set(EXTRA_COMPONENT_DIRS 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/wsg_mem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/w25n04kv
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/ad5626 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/ads1120 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/udp_client
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/lock_guard
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/ntp_udp_client
+)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(test_template)
+project(wireless-strain-guage)

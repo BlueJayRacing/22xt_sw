@@ -9,4 +9,4 @@ idf_component_register( SRCS "driveSensorSetup.cpp"
                             ad5626
                             ads1120
                             log
-                            )
+                        )

@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <ntp_udp_client.h>
+#include <ntp_udp_client.hpp>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -200,6 +200,8 @@ static void udp_client_task(void *pvParameters)
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
+        // break;
+
         if (sock != -1) {
             ESP_LOGE(TAG, "Shutting down socket and restarting...");
             shutdown(sock, 0);
@@ -246,7 +248,7 @@ void wifi_connection()
         .sta = {
             .ssid = "baja",
             }};
-    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_configuration);
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_start();
 
