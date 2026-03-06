@@ -34,7 +34,7 @@ NTPviaSPI::NTPviaSPI(SPIClass * spi_host_, uint8_t cs_pin_) : spi_host(spi_host_
     pinMode(cs_pin, OUTPUT);
     digitalWrite(cs_pin, HIGH);
 
-    spi_settings = SPISettings(10000000, MSBFIRST, SPI_MODE0);
+    spi_settings = SPISettings(10000000, LSBFIRST, SPI_MODE0);
 }
 
 NTPviaSPI::NTPviaSPI(SPIClass * spi_host_, uint8_t cs_pin_, SPISettings settings_) : spi_host(spi_host_), cs_pin(cs_pin_), spi_settings(settings_) {
@@ -49,8 +49,8 @@ int32_t NTPviaSPI::sync() {
     // setup spi
     spi_host->beginTransaction(spi_settings);
 
-    std::array<uint8_t, 8> send_buf = {0x00, 0, 0, 0, 0, 0, 0, 0};
-    std::array<uint8_t, 8> ret_buf;
+    std::array<uint8_t, 8> send_buf = {0x00, 1, 0, 1, 0, 0, 0, 0};
+    std::array<uint8_t, 8> ret_buf = {2, 2, 2, 2, 2, 2, 2, 2};
 
     uint8_t attempts = 0;
 
@@ -60,21 +60,27 @@ int32_t NTPviaSPI::sync() {
     do {
         Serial.printf("check if esp is up\n"); 
         digitalWrite(cs_pin, LOW);
-        spi_host->transfer(send_buf.data(), ret_buf.data(), 8);
+        spi_host->transfer(send_buf.data(), ret_buf.data(), 8);        
+        // spi_host->transfer(ret_buf.data(), 8);        
         digitalWrite(cs_pin, HIGH);
         delay(100);
-        
-        if (ret_buf[0] == 0x01) break; 
-        
-    } while (++attempts < MAX_ATTEMPTS);
-
+        Serial.printf("%d ", ret_buf[0]); 
+        Serial.printf("%d ", ret_buf[1]); 
+        Serial.printf("%d ", ret_buf[2]); 
+        Serial.printf("%d ", ret_buf[3]); 
+        Serial.printf("%d ", ret_buf[4]); 
+        Serial.printf("%d ", ret_buf[5]); 
+        Serial.printf("%d ", ret_buf[6]); 
+        Serial.printf("%d\n", ret_buf[7]); 
+        attempts++; 
+    } while (ret_buf[0] != 0x01 && attempts < MAX_ATTEMPTS); 
+    
+    // err if reached max attempts
     if (attempts >= MAX_ATTEMPTS) {
         Serial.printf("ESP32 failed to respond\n");
         spi_host->endTransaction();
         return -1; // Return error
     }
-    
-    // err if reached max attempts
 
     // first message
     Serial.printf("first message\n"); 

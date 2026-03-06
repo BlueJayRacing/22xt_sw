@@ -11,7 +11,7 @@ void setup() {
 }
 
 void loop() {
-  SPISettings settings(10000000, MSBFIRST, SPI_MODE0);
+  SPISettings settings(10000000, LSBFIRST, SPI_MODE0);
   
   NTPviaSPI sync(&SPI2, 0, settings);
   if (sync.sync() == 0) {
