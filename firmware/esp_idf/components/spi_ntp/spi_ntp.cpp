@@ -187,7 +187,7 @@ esp_err_t NTPviaSPI::sync() {
     // ESP_LOGI(TAG, "Finished transactions"); 
     spi_slave_transaction_t * out_trans;
     for(int i = 0; i < 3; i++) {
-        esp_err_t err = spi_slave_get_trans_result(spi_host, &out_trans, pdMS_TO_TICKS(5000));
+        esp_err_t err = spi_slave_get_trans_result(spi_host, &out_trans, pdMS_TO_TICKS(1000));
         if (err == ESP_ERR_TIMEOUT) {
             ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", i);
             return err;
