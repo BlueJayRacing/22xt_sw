@@ -25,13 +25,13 @@ WSG_MEM wsg_mem;
 int dac_bias = -1;
 
 const ads1120_init_param_t ads1120_params = {
-    .cs_pin = GPIO_NUM_38, 
+    // .cs_pin = GPIO_NUM_38, 
     .drdy_pin = GPIO_NUM_NC, 
     .spi_host = SPI2_HOST
 };
 
 const ad5626_init_param_t ad5626_params = {
-    .cs_pin = GPIO_NUM_37, 
+    // .cs_pin = GPIO_NUM_37, 
     .ldac_pin = GPIO_NUM_NC, 
     .clr_pin = GPIO_NUM_NC, 
     .spi_host = SPI2_HOST
@@ -43,27 +43,29 @@ void vTaskDataProcessing(void* pvParameter);
 void vTaskCalibrate(void * pvParameter);
 
 extern "C" void app_main(void) { 
+    ESP_LOGI(TAG, "Starting up wsg main");
     // stall till udp client startup
     SocketHandler socket_handle;
 
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
-    spi_cfg.mosi_io_num   = GPIO_NUM_31;
-    spi_cfg.miso_io_num   = GPIO_NUM_32;
+    // spi_cfg.mosi_io_num   = GPIO_NUM_31;
+    // spi_cfg.miso_io_num   = GPIO_NUM_32;
     spi_cfg.sclk_io_num   = GPIO_NUM_30;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
-    esp_err_t err = spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize SPI bus: %d", err);
-        return;
-    }
+    esp_err_t err;
+    // esp_err_t err = spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to initialize SPI bus: %d", err);
+    //     return;
+    // }
 
     // read wsg num from flash
     // read dac biases from flash
 
-    wsg_mem.init();
+    // wsg_mem.init();
 
     // start data queue for flash
     flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
@@ -71,9 +73,9 @@ extern "C" void app_main(void) {
     ESP_LOGI(TAG, "Waiting for go signal");
     Message * msg;
     msg = client.recv_data();
-    while (msg == nullptr) {
-        msg = client.recv_data();
-    }
+    // while (msg == nullptr) {
+    //     msg = client.recv_data();
+    // }
 
     // connect to wifi
     err = client.initialize_wifi_connection();
@@ -86,13 +88,19 @@ extern "C" void app_main(void) {
         ESP_LOGW(TAG, "failed to initialize udp socket");
     }
 
-    // somehow deserialize msg not this way lol
+    sync();
+    ESP_LOGI(TAG, "Finished sync");
+
+    return;
+
     if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
-        start_client_timesync_loop();
+        sync();
+
+        free(msg);
 
         // start tasks
-        xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 8), NULL, 2, &write_handle, (UBaseType_t)0);
-        xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 8), NULL, 1, NULL, (UBaseType_t)1);
+        // xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 8), NULL, 2, &write_handle, (UBaseType_t)0);
+        // xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 8), NULL, 1, NULL, (UBaseType_t)1);
     } else if (msg->payload_len <= 2 && msg->payload[0] == 0x04) {
         // start calibration task
         if (msg->payload_len == 2) {
@@ -101,6 +109,8 @@ extern "C" void app_main(void) {
                 ESP_LOGE(TAG, "Error setting the id (%d) in flash: %s", msg->payload[1], esp_err_to_name(err));
             }
         }
+
+        free(msg);
 
         xTaskCreate(vTaskCalibrate, "calibration thread", (1<<16), NULL, 1, NULL);
     } else {

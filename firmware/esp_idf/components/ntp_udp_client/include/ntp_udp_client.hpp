@@ -33,4 +33,6 @@ void init_client_wifi(void);
 
 void start_client_timesync_loop(void);
 
+void sync(void);
+
 #endif

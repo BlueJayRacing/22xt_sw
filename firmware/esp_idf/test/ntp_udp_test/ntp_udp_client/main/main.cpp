@@ -1,6 +1,6 @@
-#include <ntp_udp_client.h>
+#include <ntp_udp_client.hpp>
 
-void app_main() {
+extern "C" void app_main() {
     init_client_wifi();
     start_client_timesync_loop();
 }

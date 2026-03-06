@@ -99,7 +99,7 @@ static void udp_client_task(void *pvParameters)
         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
         if (sock < 0) {
             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-            break;
+            return;
         }
 
         // Set timeout
@@ -197,10 +197,12 @@ static void udp_client_task(void *pvParameters)
             ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
             ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t) cur_time.tv_sec, (int64_t) cur_time.tv_usec);
 
+            return;
+
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
-        // break;
+        // break;break
 
         if (sock != -1) {
             ESP_LOGE(TAG, "Shutting down socket and restarting...");
@@ -208,7 +210,7 @@ static void udp_client_task(void *pvParameters)
             close(sock);
         }
     }
-    vTaskDelete(NULL);
+    // vTaskDelete(NULL);
 }
 
 static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -264,4 +266,8 @@ void init_client_wifi(void)
 // will there be problems with no pin to core
 void start_client_timesync_loop() {    
     xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+}
+ 
+void sync() {
+    udp_client_task(nullptr);
 }

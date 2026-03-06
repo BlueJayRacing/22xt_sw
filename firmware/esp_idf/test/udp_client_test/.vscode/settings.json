@@ -3,7 +3,7 @@
     "board/esp32c6-builtin.cfg"
   ],
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM1",
+  "idf.port": "/dev/ttyACM0",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32c6",
     "OPENOCD_USB_ADAPTER_LOCATION": "1-2"
@@ -13,5 +13,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=/home/cyanbrown/projects/22xt_sw/firmware/esp_idf/test/udp_client_test/build"
-  ]
+  ],
+  "idf.currentSetup": "/home/cyanbrown/esp/v5.5/esp-idf"
 }
