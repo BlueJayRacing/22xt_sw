@@ -139,7 +139,7 @@ esp_err_t NTPviaSPI::sync() {
     memset(recvbuf, 0xA5, 9);
     memset(sendbuf, 0x01, 9);
 
-    for(int i = 0; i < 3; i++) {
+    for(int i = 0; i < 1; i++) {
         memset(&trans[i], 0, sizeof(spi_slave_transaction_t)); 
         trans[i].flags = 0;
         trans[i].length = 8 * 8; 
@@ -192,6 +192,7 @@ esp_err_t NTPviaSPI::sync() {
 
     spi_slave_transaction_t * out_trans;
     esp_err_t err00 = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
+    ESP_LOGI(TAG, "check");
     if (err00 == ESP_ERR_TIMEOUT) {
         ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", 0);
         return err00;
@@ -199,8 +200,8 @@ esp_err_t NTPviaSPI::sync() {
         ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err00));
         return err00;
     }
-    ESP_LOGI(TAG, "Transaction %d completed!", 0);
-    out_trans->rxdata[0]
+    uint8_t* data = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "Transaction %d completed! First byte: %02X", 0, data[0]);
 
     // queue and wait for transaction 1
     esp_err_t err11 = spi_slave_queue_trans(spi_host, &trans[1], portMAX_DELAY);

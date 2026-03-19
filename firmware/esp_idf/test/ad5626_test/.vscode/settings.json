@@ -7,6 +7,6 @@
     "board/esp32c6-ftdi.cfg"
   ],
   "idf.currentSetup": "/Users/suhuang/.espressif/v5.5.2/esp-idf",
-  "idf.port": "/dev/tty.usbmodem101",
+  "idf.port": "/dev/tty.usbmodem2101",
   "idf.flashType": "UART"
 }

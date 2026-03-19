@@ -4,16 +4,19 @@
 
 #define MAX_ATTEMPTS 1000
 
+SPISettings settings(1000000, LSBFIRST, SPI_MODE0);
+
 void setup() {
   Serial.begin(115200); 
+  while (!Serial && millis() < 3000);
   Serial.printf("setup\n");
-  SPI2.begin();
+  SPI1.begin();
 }
 
 void loop() {
-  SPISettings settings(10000000, LSBFIRST, SPI_MODE0);
+  // SPISettings settings(1000000, LSBFIRST, SPI_MODE0);
   
-  NTPviaSPI sync(&SPI2, 0, settings);
+  NTPviaSPI sync(&SPI1, 0, settings);
   if (sync.sync() == 0) {
       uint64_t now = getMicrosecondsSinceEpoch();
       uint32_t sec = (uint32_t)(now / 1000000ULL);

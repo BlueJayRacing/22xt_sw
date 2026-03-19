@@ -47,12 +47,16 @@ int32_t NTPviaSPI::sync() {
     Serial.printf("sync begin\n"); 
 
     // setup spi
-    spi_host->beginTransaction(spi_settings);
 
-    std::array<uint8_t, 8> send_buf = {0x00, 1, 0, 1, 0, 0, 0, 0};
-    std::array<uint8_t, 8> ret_buf = {2, 2, 2, 2, 2, 2, 2, 2};
+    // std::array<uint8_t, 8> send_buf = {0x00, 1, 0, 1, 0, 0, 0, 0};
+    // std::array<uint8_t, 8> ret_buf = {2, 2, 2, 2, 2, 2, 2, 2};
+    uint8_t send_buf[8] = {0x00, 1, 0, 1, 0, 0, 0, 0};
+    uint8_t ret_buf[8] = {0};
+
 
     uint8_t attempts = 0;
+
+    spi_host->beginTransaction(spi_settings);
 
     Serial.printf("setup spi\n"); 
 
@@ -60,7 +64,7 @@ int32_t NTPviaSPI::sync() {
     do {
         Serial.printf("check if esp is up\n"); 
         digitalWrite(cs_pin, LOW);
-        spi_host->transfer(send_buf.data(), ret_buf.data(), 8);        
+        spi_host->transfer(send_buf, ret_buf, 8);        
         // spi_host->transfer(ret_buf.data(), 8);        
         digitalWrite(cs_pin, HIGH);
         delay(100);
@@ -73,6 +77,7 @@ int32_t NTPviaSPI::sync() {
         Serial.printf("%d ", ret_buf[6]); 
         Serial.printf("%d\n", ret_buf[7]); 
         attempts++; 
+        delay(2000);
     } while (ret_buf[0] != 0x01 && attempts < MAX_ATTEMPTS); 
     
     // err if reached max attempts
@@ -85,25 +90,26 @@ int32_t NTPviaSPI::sync() {
     // first message
     Serial.printf("first message\n"); 
     uint64_t t1 = getMicrosecondsSinceEpoch();
-    digitalWrite(cs_pin, LOW);
-    spi_host->transfer(send_buf.data(), ret_buf.data(), 8);
-    digitalWrite(cs_pin, HIGH);
+    
+    // digitalWrite(cs_pin, LOW);
+    // spi_host->transfer(send_buf, ret_buf, 8);
+    // digitalWrite(cs_pin, HIGH);
 
-    delay(2);
+    // delay(2);
 
-    digitalWrite(cs_pin, LOW);
-    uint64_t t2 = getMicrosecondsSinceEpoch();
-    std::array<uint8_t, 8> t2_send_buf = uint64_to_buf(t2);
-    spi_host->transfer(t2_send_buf.data(), ret_buf.data(), 8);
-    digitalWrite(cs_pin, HIGH);
+    // digitalWrite(cs_pin, LOW);
+    // uint64_t t2 = getMicrosecondsSinceEpoch();
+    // std::array<uint8_t, 8> t2_send_buf = uint64_to_buf(t2);
+    // spi_host->transfer(t2_send_buf.data(), ret_buf.data(), 8);
+    // digitalWrite(cs_pin, HIGH);
 
-    delay(2);
+    // delay(2);
 
-    // send t1
-    digitalWrite(cs_pin, LOW);
-    std::array<uint8_t, 8> t1_send_buf = uint64_to_buf(t1);
-    spi_host->transfer(t1_send_buf.data(), ret_buf.data(), 8);
-    digitalWrite(cs_pin, HIGH);
+    // // send t1
+    // digitalWrite(cs_pin, LOW);
+    // std::array<uint8_t, 8> t1_send_buf = uint64_to_buf(t1);
+    // spi_host->transfer(t1_send_buf.data(), ret_buf.data(), 8);
+    // digitalWrite(cs_pin, HIGH);
 
     spi_host->endTransaction();
 
