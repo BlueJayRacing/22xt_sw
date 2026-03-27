@@ -25,7 +25,7 @@ class NTPviaSPI {
 
     spi_host_device_t spi_host;
 
-    spi_slave_transaction_t* trans[4];
+    spi_slave_transaction_t* trans[3];
     WORD_ALIGNED_ATTR std::array<uint8_t, 8> rx_buf[3];
     WORD_ALIGNED_ATTR std::array<uint8_t, 8> dummy_tx_buf = {0x01, 0, 0, 0, 0, 0, 0, 0};
 };
