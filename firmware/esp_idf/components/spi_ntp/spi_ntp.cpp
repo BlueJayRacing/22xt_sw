@@ -85,17 +85,11 @@ void my_post_setup_cb(spi_slave_transaction_t* trans) { return; }
 NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 {
     spi_bus_config_t settings = {};
-    settings.mosi_io_num      = 10;
-    settings.miso_io_num      = 9;
-    settings.sclk_io_num      = 8;
-
-    // settings.mosi_io_num = 18;
-    // settings.miso_io_num = 20;
-    // settings.sclk_io_num = 19;
-
-    spi_slave_interface_config_t slave_config;
-    slave_config.spics_io_num = 7;
-    // slave_config.spics_io_num = 17;
+    spi_slave_interface_config_t slave_config = {}; 
+    settings.mosi_io_num      = 7;
+    settings.miso_io_num      = 2;
+    settings.sclk_io_num      = 6;
+    slave_config.spics_io_num = 16;
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
