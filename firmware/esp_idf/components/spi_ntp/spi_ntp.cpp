@@ -86,10 +86,10 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 {
     spi_bus_config_t settings = {};
     spi_slave_interface_config_t slave_config = {}; 
-    settings.mosi_io_num      = 7;
-    settings.miso_io_num      = 2;
-    settings.sclk_io_num      = 6;
-    slave_config.spics_io_num = 16;
+    settings.mosi_io_num      = 18;
+    settings.miso_io_num      = 20;
+    settings.sclk_io_num      = 19;
+    slave_config.spics_io_num = 21;
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
@@ -121,18 +121,22 @@ esp_err_t NTPviaSPI::sync()
     ESP_LOGI(TAG, "Sync began");
     recv_count                       = 0;
     recv_time_err                    = ESP_OK;
-    std::array<uint8_t, 1> dummy_buf = {0};
-    std::array<uint8_t, 8> rx_buf_trans1;
-    std::array<uint8_t, 8> rx_buf_trans2;
-    std::array<uint8_t, 8> rx_buf_trans3;
+    // std::array<uint8_t, 1> dummy_buf = {0};
+    // std::array<uint8_t, 8> rx_buf_trans1;
+    // std::array<uint8_t, 8> rx_buf_trans2;
+    // std::array<uint8_t, 8> rx_buf_trans3;
 
     // member variables to configure transactions
-    char* sendbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
-    char* recvbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
-    memset(recvbuf, 0xA5, 9);
-    memset(sendbuf, 0x01, 9);
+    std::array<char*, 3> sendbuf; 
+    sendbuf.fill(static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0))); 
+    std::array<char*, 3> recvbuf; 
+    recvbuf.fill(static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0))); 
+    // char* sendbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
+    // char* recvbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
+        memset(recvbuf[i], 0xA5, 9);
+        memset(sendbuf[i], 0x01, 9);
         memset(&trans[i], 0, sizeof(spi_slave_transaction_t*));
         trans[i]->flags     = 0;
         trans[i]->length    = 8 * 8;
@@ -140,8 +144,8 @@ esp_err_t NTPviaSPI::sync()
         dummy_tx_buf[0]     = 0x01;
         // trans[i].tx_buffer = dummy_tx_buf.data();
         // trans[i].rx_buffer = rx_buf[i].data();
-        trans[i]->tx_buffer = sendbuf;
-        trans[i]->rx_buffer = recvbuf;
+        trans[i]->tx_buffer = sendbuf[i];
+        trans[i]->rx_buffer = recvbuf[i];
         trans[i]->user      = this;
     }
 
@@ -182,18 +186,18 @@ esp_err_t NTPviaSPI::sync()
 
     // ESP_LOGI(TAG, "Successfully queued transaction %d", 0);
 
-    // spi_slave_transaction_t* out_trans;
-    // esp_err_t err00 = spi_slave_get_trans_result(spi_host, &out_trans, 2000);
-    // ESP_LOGI(TAG, "check");
-    // if (err00 == ESP_ERR_TIMEOUT) {
-    //     ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", 0);
-    //     return err00;
-    // } else if (err00 != ESP_OK) {
-    //     ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err00));
-    //     return err00;
-    // }
-    // uint8_t* data = (uint8_t*)out_trans->rx_buffer;
-    // ESP_LOGI(TAG, "Transaction %d completed! First byte: %02X", 0, data[0]);
+    spi_slave_transaction_t* out_trans;
+    esp_err_t err00 = spi_slave_get_trans_result(spi_host, &out_trans, 2000);
+    ESP_LOGI(TAG, "check");
+    if (err00 == ESP_ERR_TIMEOUT) {
+        ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", 0);
+        return err00;
+    } else if (err00 != ESP_OK) {
+        ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err00));
+        return err00;
+    }
+    uint8_t* data = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "Transaction %d completed! First byte: %02X", 0, data[0]);
 
     // // queue and wait for transaction 1
     // esp_err_t err11 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
