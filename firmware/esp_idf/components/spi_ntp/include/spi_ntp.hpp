@@ -8,7 +8,6 @@
 #include <driver/spi_slave.h>
 #include <sys/time.h>
 
-void recv_time(spi_slave_transaction_t* trans);
 
 class NTPviaSPI {
   public:
