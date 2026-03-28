@@ -2,6 +2,7 @@
 #include "esp_timer.h"
 #include <array>
 
+#include "driver/gpio.h"
 #include <driver/spi_slave.h>
 #include <esp_err.h>
 #include <esp_log.h>
@@ -9,7 +10,8 @@
 #include <stdio.h>
 
 #define US_PER_SECOND 1000000
-static const char* TAG = "SPI NTP";
+static const char* TAG   = "SPI NTP";
+gpio_num_t handshake_pin = GPIO_NUM_2;
 
 uint64_t buf_to_uint64(std::array<uint8_t, 8> buf)
 {
@@ -81,20 +83,23 @@ void IRAM_ATTR recv_time(spi_slave_transaction_t* trans)
 
     obj->recv_count++;
 }
-void my_post_setup_cb(spi_slave_transaction_t* trans) { return; }
+void my_post_setup_cb(spi_slave_transaction_t* trans) { gpio_set_level(handshake_pin, 1); }
+void my_post_trans_cb(spi_slave_transaction_t* trans) { gpio_set_level(handshake_pin, 0); }
+
 NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 {
-    spi_bus_config_t settings = {};
-    spi_slave_interface_config_t slave_config = {}; 
-    settings.mosi_io_num      = 18;
-    settings.miso_io_num      = 20;
-    settings.sclk_io_num      = 19;
-    slave_config.spics_io_num = 21;
+    spi_bus_config_t settings                 = {};
+    spi_slave_interface_config_t slave_config = {};
+    settings.mosi_io_num                      = 18;
+    settings.miso_io_num                      = 20;
+    settings.sclk_io_num                      = 19;
+    slave_config.spics_io_num                 = 21;
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
     slave_config.mode          = 0;
     slave_config.post_setup_cb = my_post_setup_cb;
+    slave_config.post_trans_cb = my_post_trans_cb;
 
     esp_err_t err = spi_slave_initialize(SPI2_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
     switch (err) {
@@ -119,25 +124,32 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 esp_err_t NTPviaSPI::sync()
 {
     ESP_LOGI(TAG, "Sync began");
-    recv_count                       = 0;
-    recv_time_err                    = ESP_OK;
+    recv_count    = 0;
+    recv_time_err = ESP_OK;
     // std::array<uint8_t, 1> dummy_buf = {0};
     // std::array<uint8_t, 8> rx_buf_trans1;
     // std::array<uint8_t, 8> rx_buf_trans2;
     // std::array<uint8_t, 8> rx_buf_trans3;
 
     // member variables to configure transactions
-    std::array<char*, 3> sendbuf; 
-    sendbuf.fill(static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0))); 
-    std::array<char*, 3> recvbuf; 
-    recvbuf.fill(static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0))); 
+    std::array<char*, 3> sendbuf;
+    std::array<char*, 3> recvbuf;
+
+    for (int i = 0; i < 3; i++) {
+        sendbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
+        recvbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
+
+        assert(sendbuf[i] != nullptr);
+        assert(recvbuf[i] != nullptr);
+    }
     // char* sendbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
     // char* recvbuf = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
 
     for (int i = 0; i < 3; i++) {
+        trans[i] = new spi_slave_transaction_t;
         memset(recvbuf[i], 0xA5, 9);
         memset(sendbuf[i], 0x01, 9);
-        memset(&trans[i], 0, sizeof(spi_slave_transaction_t*));
+        memset(trans[i], 0, sizeof(spi_slave_transaction_t));
         trans[i]->flags     = 0;
         trans[i]->length    = 8 * 8;
         trans[i]->trans_len = 8 * 8;
@@ -256,6 +268,9 @@ esp_err_t NTPviaSPI::sync()
         return recv_time_err;
     }
 
+    for (int i = 0; i < 3; i++) {
+        delete trans[i];
+    }
     uint64_t timestamp_trans2 = buf_to_uint64(rx_buf[1]);
     uint64_t timestamp_trans3 = buf_to_uint64(rx_buf[2]);
 
