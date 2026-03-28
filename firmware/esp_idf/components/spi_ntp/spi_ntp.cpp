@@ -54,26 +54,32 @@ void half_timeval(struct timeval* t1)
     t1->tv_usec /= 2;
 }
 
-void IRAM_ATTR recv_time(spi_slave_transaction_t* trans)
+void recv_time(spi_slave_transaction_t* trans)
 {
+    // ESP_LOGI(TAG, "recv_time"); 
+    // ESP_LOGI(TAG, "%d", trans->length); 
+    gpio_set_level(handshake_pin, 1);
     NTPviaSPI* obj = (NTPviaSPI*)trans->user;
     int64_t now_us = esp_timer_get_time();
 
     switch (obj->recv_count) {
     case 0:
+        // ESP_LOGI(TAG, "Received pre-transmission"); 
+        break; 
+    case 1:
         // gettimeofday(&(obj->t0), NULL);
-        // ESP_LOGI(TAG, "Received transmission 1");
+        // ESP_LOGI(TAG, "Received transmission 0");
         obj->t0.tv_sec  = now_us / 1000000;
         obj->t0.tv_usec = now_us % 1000000;
         break;
-    case 1:
+    case 2:
         // gettimeofday(&(obj->t3), NULL);
-        // ESP_LOGI(TAG, "Received transmission 2");
+        // ESP_LOGI(TAG, "Received transmission 1");
         obj->t3.tv_sec  = now_us / 1000000;
         obj->t3.tv_usec = now_us % 1000000;
         break;
-    case 2:
-        // ESP_LOGI(TAG, "Received transmission 3");
+    case 3:
+        // ESP_LOGI(TAG, "Received transmission 2");
         break;
     default:
         obj->recv_time_err = ESP_FAIL;
@@ -83,6 +89,7 @@ void IRAM_ATTR recv_time(spi_slave_transaction_t* trans)
 
     obj->recv_count++;
 }
+
 void my_post_setup_cb(spi_slave_transaction_t* trans) { gpio_set_level(handshake_pin, 1); }
 void my_post_trans_cb(spi_slave_transaction_t* trans) { gpio_set_level(handshake_pin, 0); }
 
@@ -98,10 +105,19 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
     slave_config.mode          = 0;
-    slave_config.post_setup_cb = my_post_setup_cb;
+    slave_config.post_setup_cb = recv_time;
     slave_config.post_trans_cb = my_post_trans_cb;
 
-    esp_err_t err = spi_slave_initialize(SPI2_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
+    gpio_config_t handshake_cfg = {};
+    handshake_cfg.pin_bit_mask = (1ULL << handshake_pin);
+    handshake_cfg.mode         = GPIO_MODE_OUTPUT;
+    handshake_cfg.pull_up_en   = GPIO_PULLUP_DISABLE;
+    handshake_cfg.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    handshake_cfg.intr_type    = GPIO_INTR_DISABLE;
+    gpio_config(&handshake_cfg);
+    gpio_set_level(handshake_pin, 0);
+
+    esp_err_t err = spi_slave_initialize(SPI2_HOST, &settings, &slave_config, SPI_DMA_CH_AUTO);
     switch (err) {
     case ESP_OK:
         ESP_LOGI(TAG, "Initialized spi slave interface");
@@ -126,8 +142,7 @@ esp_err_t NTPviaSPI::sync()
     ESP_LOGI(TAG, "Sync began");
     recv_count    = 0;
     recv_time_err = ESP_OK;
-    // std::array<uint8_t, 1> dummy_buf = {0};
-    // std::array<uint8_t, 8> rx_buf_trans1;
+
     // std::array<uint8_t, 8> rx_buf_trans2;
     // std::array<uint8_t, 8> rx_buf_trans3;
 
@@ -161,14 +176,15 @@ esp_err_t NTPviaSPI::sync()
         trans[i]->user      = this;
     }
 
-    // spi_slave_transaction_t trans1;
-    // spi_slave_transaction_t* ptrans1 = &trans1;
-    // memset(ptrans1, 0, sizeof(spi_slave_transaction_t));
-    // trans1.flags     = 0;
-    // trans1.length    = dummy_buf.size() << 3;
-    // trans1.tx_buffer = dummy_buf.data();
-    // trans1.rx_buffer = rx_buf_trans1.data();
-    // trans1.user      = this;
+    std::array<uint8_t, 1> dummy_buf = {0x01};
+    std::array<uint8_t, 8> rx_buf_trans_pre;
+    spi_slave_transaction_t trans_pre;
+    memset(&trans_pre, 0, sizeof(spi_slave_transaction_t));
+    trans_pre.flags     = 0;
+    trans_pre.length    = dummy_buf.size() << 3;
+    trans_pre.tx_buffer = dummy_buf.data();
+    trans_pre.rx_buffer = rx_buf_trans_pre.data();
+    trans_pre.user      = this;
 
     // spi_slave_transaction_t trans2;
     // spi_slave_transaction_t* ptrans2 = &trans2;
@@ -188,44 +204,81 @@ esp_err_t NTPviaSPI::sync()
     // trans3.rx_buffer = rx_buf_trans3.data();
     // trans3.user      = this;
 
-    // queue and wait for transaction 0
-    esp_err_t err10 = spi_slave_queue_trans(spi_host, trans[0], 2000);
-    if (err10 != ESP_OK) {
-        ESP_LOGI(TAG, "Failed queuing transaction %d", 0);
-        return err10;
-    }
-    vTaskDelay(10);
+    // queue all transactions upfront
+    spi_slave_queue_trans(spi_host, &trans_pre, portMAX_DELAY);
+    esp_err_t err00 = spi_slave_queue_trans(spi_host, trans[0], portMAX_DELAY);
+    esp_err_t err10 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
+    esp_err_t err20 = spi_slave_queue_trans(spi_host, trans[2], portMAX_DELAY);
 
-    // ESP_LOGI(TAG, "Successfully queued transaction %d", 0);
-
+    // pre-sync transaction 
     spi_slave_transaction_t* out_trans;
-    esp_err_t err00 = spi_slave_get_trans_result(spi_host, &out_trans, 2000);
-    ESP_LOGI(TAG, "check");
-    if (err00 == ESP_ERR_TIMEOUT) {
-        ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", 0);
+    esp_err_t err = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Transaction failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    uint8_t* d = (uint8_t*)trans_pre.tx_buffer;
+    ESP_LOGI(TAG, "pre-sync done");
+
+    //transaction 0
+    if (err00 != ESP_OK) {
+        ESP_LOGI(TAG, "Failed queuing transaction %d", 0);
         return err00;
-    } else if (err00 != ESP_OK) {
-        ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err00));
-        return err00;
+    }
+    esp_err_t err01 = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
+    if (err01 == ESP_ERR_TIMEOUT) {
+        ESP_LOGE(TAG, "Timed out waiting for Master on transaction 0");
+        return err01;
+    } else if (err01 != ESP_OK) {
+        ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err01));
+        return err01;
     }
     uint8_t* data = (uint8_t*)out_trans->rx_buffer;
-    ESP_LOGI(TAG, "Transaction %d completed! First byte: %02X", 0, data[0]);
+    ESP_LOGI(TAG, "Transaction 0 completed! First byte: %02X", data[0]);
+    d = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "trans[0] result: %02X %02X %02X %02X %02X %02X %02X %02X",
+        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
 
-    // // queue and wait for transaction 1
-    // esp_err_t err11 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
-    // if (err11 != ESP_OK) {
-    //     ESP_LOGI(TAG, "Failed queuing transaction %d", 1);
-    //     return err11;
-    // }
-    // esp_err_t err01 = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
-    // if (err01 == ESP_ERR_TIMEOUT) {
-    //     ESP_LOGE(TAG, "Timed out waiting for Master on transaction %d", 1);
-    //     return err01;
-    // } else if (err01 != ESP_OK) {
-    //     ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err01));
-    //     return err01;
-    // }
-    // ESP_LOGI(TAG, "Transaction %d completed!", 1);
+    // transaction 1
+    if (err10 != ESP_OK) {
+        ESP_LOGI(TAG, "Failed queuing transaction 1");
+        return err10;
+    }
+    esp_err_t err11 = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
+    if (err11 == ESP_ERR_TIMEOUT) {
+        ESP_LOGE(TAG, "Timed out waiting for Master on transaction 1");
+        return err11;
+    } else if (err11 != ESP_OK) {
+        ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err11));
+        return err11;
+    }
+    uint64_t timestamp_trans3 = buf_to_uint64(*(std::array<uint8_t,8>*)out_trans->rx_buffer);
+    data = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "Transaction 1 completed! First byte: %02X", data[0]);
+    d = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "trans[1] result: %02X %02X %02X %02X %02X %02X %02X %02X",
+        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+
+    // transaction 2
+    if (err20 != ESP_OK) {
+        ESP_LOGI(TAG, "Failed queuing transaction 2");
+        return err20;
+    }
+    esp_err_t err21 = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
+    if (err21 == ESP_ERR_TIMEOUT) {
+        ESP_LOGE(TAG, "Timed out waiting for Master on transaction 2");
+        return err21;
+    } else if (err21 != ESP_OK) {
+        ESP_LOGE(TAG, "SPI Error: %s", esp_err_to_name(err21));
+        return err21;
+    }
+    uint64_t timestamp_trans2 = buf_to_uint64(*(std::array<uint8_t,8>*)out_trans->rx_buffer);
+    data = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "Transaction 2 completed! First byte: %02X", data[0]);
+    d = (uint8_t*)out_trans->rx_buffer;
+    ESP_LOGI(TAG, "trans[2] result: %02X %02X %02X %02X %02X %02X %02X %02X",
+        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+
 
     // esp_err_t err = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
     // if (err != ESP_OK) {
@@ -263,21 +316,18 @@ esp_err_t NTPviaSPI::sync()
     //     return err;
     // }
 
-    if (recv_time_err != ESP_OK) {
-        ESP_LOGI(TAG, "Error with transmission");
-        return recv_time_err;
-    }
+    // if (recv_time_err != ESP_OK) {
+    //     ESP_LOGI(TAG, "Error with transmission");
+    //     return recv_time_err;
+    // }
 
     for (int i = 0; i < 3; i++) {
         delete trans[i];
     }
-    uint64_t timestamp_trans2 = buf_to_uint64(rx_buf[1]);
-    uint64_t timestamp_trans3 = buf_to_uint64(rx_buf[2]);
 
-    t2.tv_usec = timestamp_trans2 % 10000000L;
+    t2.tv_usec = timestamp_trans2 % 1000000L;
     t2.tv_sec  = (int64_t)(timestamp_trans2 / 1000000L);
-
-    t1.tv_usec = timestamp_trans3 % 10000000L;
+    t1.tv_usec = timestamp_trans3 % 1000000L;
     t1.tv_sec  = (int64_t)(timestamp_trans3 / 1000000L);
 
     struct timeval sub1;
@@ -290,10 +340,33 @@ esp_err_t NTPviaSPI::sync()
     add_timeval(sub1, sub2, &offset);
     half_timeval(&offset);
 
+    // raw bytes
+    uint8_t* rb1 = (uint8_t*)recvbuf[1];
+    uint8_t* rb2 = (uint8_t*)recvbuf[2];
+    ESP_LOGI(TAG, "recvbuf[1]: %02X %02X %02X %02X %02X %02X %02X %02X",
+        rb1[0], rb1[1], rb1[2], rb1[3], rb1[4], rb1[5], rb1[6], rb1[7]);
+    ESP_LOGI(TAG, "recvbuf[2]: %02X %02X %02X %02X %02X %02X %02X %02X",
+        rb2[0], rb2[1], rb2[2], rb2[3], rb2[4], rb2[5], rb2[6], rb2[7]);
+
+    // parsed timestamps
+    ESP_LOGI(TAG, "t0: %lld.%06lld", (int64_t)t0.tv_sec, (int64_t)t0.tv_usec);
+    ESP_LOGI(TAG, "t1 (from teensy): %lld.%06lld", (int64_t)t1.tv_sec, (int64_t)t1.tv_usec);
+    ESP_LOGI(TAG, "t2 (from teensy): %lld.%06lld", (int64_t)t2.tv_sec, (int64_t)t2.tv_usec);    
+    ESP_LOGI(TAG, "t3: %lld.%06lld", (int64_t)t3.tv_sec, (int64_t)t3.tv_usec);
+
+    // intermediate calculations
+    ESP_LOGI(TAG, "sub1 (t0-t1): %lld.%06lld", (int64_t)sub1.tv_sec, (int64_t)sub1.tv_usec);
+    ESP_LOGI(TAG, "sub2 (t3-t2): %lld.%06lld", (int64_t)sub2.tv_sec, (int64_t)sub2.tv_usec);
+    ESP_LOGI(TAG, "offset: %lld.%06lld", (int64_t)offset.tv_sec, (int64_t)offset.tv_usec);
+
+    // final
+    ESP_LOGI(TAG, "cur_time before: %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
+    ESP_LOGI(TAG, "cur_time after:  %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
+
     gettimeofday(&cur_time, NULL);
-    sub_timeval(offset, cur_time, &cur_time);
+    add_timeval(cur_time, offset, &cur_time);
+    settimeofday(&cur_time, NULL);
     ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
     ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
-
     return ESP_OK;
 }
