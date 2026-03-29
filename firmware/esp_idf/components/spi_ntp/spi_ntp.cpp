@@ -6,7 +6,7 @@
 #include <driver/spi_slave.h>
 #include <esp_err.h>
 #include <esp_log.h>
-#include <freertos/freertos.h>
+#include <freertos/FreeRTOS.h>
 #include <stdio.h>
 
 #define US_PER_SECOND 1000000
@@ -26,13 +26,14 @@ void sub_timeval(struct timeval t1, struct timeval t2, struct timeval* td)
 {
     td->tv_usec = t2.tv_usec - t1.tv_usec;
     td->tv_sec  = t2.tv_sec - t1.tv_sec;
-    if (td->tv_sec > 0 && td->tv_usec < 0) {
+    if (td->tv_usec < 0) {
         td->tv_usec += US_PER_SECOND;
         td->tv_sec--;
-    } else if (td->tv_sec < 0 && td->tv_usec > 0) {
+    } else if (td->tv_usec >= US_PER_SECOND) {
         td->tv_usec -= US_PER_SECOND;
         td->tv_sec++;
     }
+    
 }
 
 void add_timeval(struct timeval t1, struct timeval t2, struct timeval* td)
@@ -151,8 +152,8 @@ esp_err_t NTPviaSPI::sync()
     std::array<char*, 3> recvbuf;
 
     for (int i = 0; i < 3; i++) {
-        sendbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
-        recvbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 9, 0));
+        sendbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 8, 0));
+        recvbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 8, 0));
 
         assert(sendbuf[i] != nullptr);
         assert(recvbuf[i] != nullptr);
@@ -162,8 +163,8 @@ esp_err_t NTPviaSPI::sync()
 
     for (int i = 0; i < 3; i++) {
         trans[i] = new spi_slave_transaction_t;
-        memset(recvbuf[i], 0xA5, 9);
-        memset(sendbuf[i], 0x01, 9);
+        memset(recvbuf[i], 0xA5, 8);
+        memset(sendbuf[i], 0x01, 8);
         memset(trans[i], 0, sizeof(spi_slave_transaction_t));
         trans[i]->flags     = 0;
         trans[i]->length    = 8 * 8;
@@ -348,6 +349,7 @@ esp_err_t NTPviaSPI::sync()
     ESP_LOGI(TAG, "recvbuf[2]: %02X %02X %02X %02X %02X %02X %02X %02X",
         rb2[0], rb2[1], rb2[2], rb2[3], rb2[4], rb2[5], rb2[6], rb2[7]);
 
+
     // parsed timestamps
     ESP_LOGI(TAG, "t0: %lld.%06lld", (int64_t)t0.tv_sec, (int64_t)t0.tv_usec);
     ESP_LOGI(TAG, "t1 (from teensy): %lld.%06lld", (int64_t)t1.tv_sec, (int64_t)t1.tv_usec);
@@ -358,14 +360,15 @@ esp_err_t NTPviaSPI::sync()
     ESP_LOGI(TAG, "sub1 (t0-t1): %lld.%06lld", (int64_t)sub1.tv_sec, (int64_t)sub1.tv_usec);
     ESP_LOGI(TAG, "sub2 (t3-t2): %lld.%06lld", (int64_t)sub2.tv_sec, (int64_t)sub2.tv_usec);
     ESP_LOGI(TAG, "offset: %lld.%06lld", (int64_t)offset.tv_sec, (int64_t)offset.tv_usec);
-
+          gettimeofday(&cur_time, NULL);
     // final
     ESP_LOGI(TAG, "cur_time before: %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
-    ESP_LOGI(TAG, "cur_time after:  %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
-
-    gettimeofday(&cur_time, NULL);
     add_timeval(cur_time, offset, &cur_time);
     settimeofday(&cur_time, NULL);
+    ESP_LOGI(TAG, "cur_time after:  %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
+
+  
+    
     ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
     ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
     return ESP_OK;
