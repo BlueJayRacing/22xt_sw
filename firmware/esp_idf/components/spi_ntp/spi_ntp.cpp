@@ -11,7 +11,7 @@
 
 #define US_PER_SECOND 1000000
 static const char* TAG   = "SPI NTP";
-gpio_num_t handshake_pin = GPIO_NUM_2;
+gpio_num_t handshake_pin = GPIO_NUM_2; 
 
 uint64_t buf_to_uint64(std::array<uint8_t, 8> buf)
 {
@@ -98,10 +98,18 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 {
     spi_bus_config_t settings                 = {};
     spi_slave_interface_config_t slave_config = {};
+
+    // c6 pins 
     settings.mosi_io_num                      = 18;
     settings.miso_io_num                      = 20;
     settings.sclk_io_num                      = 19;
     slave_config.spics_io_num                 = 21;
+
+    // s3 pins 
+    // settings.mosi_io_num                      = 9;
+    // settings.miso_io_num                      = 8;
+    // settings.sclk_io_num                      = 7;
+    // slave_config.spics_io_num                 = 4;
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
