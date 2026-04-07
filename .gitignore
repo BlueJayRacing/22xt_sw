@@ -1,6 +1,6 @@
 *.out
 *.o
-**/.vscode
+**/.vscode/*
 *.lock
 .DS_Store
 **/.idea/
@@ -71,5 +71,6 @@ samples/rabbit/my_config.h
 **.pb.cc
 **.pb.h
 **.pb.c
+**/sdkconfig.*
 
 **/get-docker.sh

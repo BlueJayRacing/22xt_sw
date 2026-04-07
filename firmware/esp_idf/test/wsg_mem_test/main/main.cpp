@@ -20,14 +20,14 @@ WSG_MEM test_init()
 void test_meta()
 {
     WSG_MEM wsg_mem;
-    std::vector<uint8_t> r;
+    std::array<uint8_t, 9> r;
     wsg_mem.read_meta(r);
 }
 
 void test_write_column(WSG_MEM& w)
 {
     w.nuke();
-    std::vector<uint32_t> wsgs = {1, 2, 3};
+    std::array<uint16_t, 3> wsgs = {1, 2, 3};
     w.write(wsgs, 1, 1);
     std::vector<uint8_t> rx_data;
     w.read_page(1);
@@ -35,7 +35,7 @@ void test_write_column(WSG_MEM& w)
 
 void stress_test(WSG_MEM& w)
 {
-    std::vector<uint32_t> x = {1, 2, 3};
+    std::array<uint16_t, 3> x = {1, 2, 3};
     for (int i = 2; i < 10; i++) {
         w.write(x, i, 1);
     }
@@ -49,7 +49,7 @@ void test_indiv_overflow(WSG_MEM& w)
 {
     ESP_LOGI(TAG, "Testing overflow?");
     std::vector<uint32_t> wsgs = {1, 2, 3};
-    w.indiv_write(wsgs);
+    w.indiv_write(0, wsgs);
 }
 
 WSG_MEM tune_min_delay(void)
@@ -61,8 +61,16 @@ WSG_MEM tune_min_delay(void)
 void hi() { return; }
 extern "C" void app_main(void)
 {
+    w25n04kv_init_param_t flash_params = {
+        .cs_pin = GPIO_NUM_41,
+        .wp_pin = GPIO_NUM_NC,
+        .spi_host = SPI2_HOST
+    };
+    
     WSG_MEM wsg_mem = test_init();
+    wsg_mem.init(flash_params);
     wsg_mem.nuke();
 
+    wsg_mem.init_meta(FIRST_PAGE, 0, 1, 0);
     // test_indiv_overflow(wsg_mem);
 }

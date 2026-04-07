@@ -35,7 +35,7 @@ class SocketHandler {
         esp_err_t init(int port);
 
         esp_err_t send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buf_len, struct sockaddr_in dest_addr);
-        int recv(Message * msg);
+        int srecv(Message * msg);
         void close_sock();
 
         bool is_socket_open();
@@ -49,7 +49,7 @@ class SocketHandler {
 
         struct timeval timeout;
 
-        struct sockaddr_in6 dest_addr6;
+        struct sockaddr_in dest_addr;
         socklen_t socklen;
 };
 

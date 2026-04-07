@@ -82,18 +82,6 @@ esp_err_t UdpServer::initialize_wifi_connection() {
 
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, this);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
-    
-    wifi_config_t wifi_configuration = {
-        .ap = {
-            .ssid = "baja",
-            .max_connection = 5
-        }};
-    
-    err = esp_wifi_set_config(WIFI_IF_AP, &wifi_configuration);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set WiFi config (err: %d)\n", err);
-        return err;
-    }
 
     err = esp_wifi_set_mode(WIFI_MODE_AP);
     if (err != ESP_OK) {
@@ -104,6 +92,19 @@ esp_err_t UdpServer::initialize_wifi_connection() {
     err = esp_wifi_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start WiFi (err: %d)\n", err);
+        return err;
+    }
+
+        
+    wifi_config_t wifi_configuration = {
+        .ap = {
+            .ssid = "baja",
+            .max_connection = 5
+        }};
+    
+    err = esp_wifi_set_config(WIFI_IF_AP, &wifi_configuration);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi config (err: %d)\n", err);
         return err;
     }
     
@@ -140,7 +141,7 @@ esp_err_t UdpServer::initialize_socket() {
     }
 
     ESP_LOGI(TAG, "Starting the listener thread");
-    ferr = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    ferr = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 1, NULL);
     if(ferr != pdPASS)
     {
         ESP_LOGE(TAG, "Could not allocate required memory");
@@ -219,7 +220,7 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
             ESP_LOGI(TAG, "Starting to recv message");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
-            int len = server->socket_handler_.recv(msg);
+            int len = server->socket_handler_.srecv(msg);
             if(len < 0) {
                 delete msg;
                 continue;

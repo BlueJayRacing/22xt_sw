@@ -18,7 +18,7 @@ void Test::testAD5626(void)
     // Need to connect to DAC output in order to see if it works
     ad5626_init_param_t dac_params;
     dac_params.cs_pin   = GPIO_NUM_0;
-    dac_params.ldac_pin = GPIO_NUM_23;
+    // dac_params.ldac_pin = GPIO_NUM_23;
     dac_params.clr_pin  = GPIO_NUM_NC;
     dac_params.spi_host = SPI2_HOST;
 

@@ -104,29 +104,48 @@ esp_err_t UdpClient::initialize_wifi_connection() {
 
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
-   
+
     wifi_config_t wifi_configuration = {
         .sta = {
             .ssid = "baja",
             }};
-    
-    err = esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
-        return err;
-    }
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
         return err;
     }    
+
+    err = esp_wifi_set_config(WIFI_IF_STA, &wifi_configuration);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi Mode (err: %d)\n", err);
+        return err;
+    }
     
     err = esp_wifi_start();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start WiFi (err: %d)\n", err);
         return err;
     }
+
+    err = esp_wifi_scan_start(NULL, true);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "fAILED TO SCAN");
+        return err;
+    }
+
+    // wifi_ap_record_t records[15];
+    // uint16_t len = 15;
+    // err = esp_wifi_scan_get_ap_records(&len, records);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "failed to get ap err %s", esp_err_to_name(err));
+    //     return err;
+    // }
+
+    // for (int i = 0; i < len; i++) {
+    //     ESP_LOGI(TAG, "ap name: %s", records[i].ssid);
+    // }
+
 
     err = ensure_wifi_connection(5);
     if (err != ESP_OK) {
@@ -166,7 +185,7 @@ esp_err_t UdpClient::initialize_socket() {
         return err;
     }
 
-    BaseType_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 5, NULL);
+    BaseType_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 1<<12, (void *) this, 1, NULL);
     if (rtos_err != pdPASS) {
         ESP_LOGE(TAG, "Failed to create listener worker task");
         return ESP_FAIL;
@@ -199,6 +218,11 @@ void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
     UdpClient * client = (UdpClient *) handler_arg;
     Message * msg = (Message *) event_data;
 
+    if (!client->is_wifi_connected()) {
+        client->ensure_wifi_connection(5);
+        ESP_LOGE(TAG, "Disconnected from ap");
+    }
+
     ESP_LOGI(TAG, "Sending message");
     client->socket_handler_.send(msg->payload, msg->payload_len);
 }
@@ -226,6 +250,12 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
 
         while (1) {
             vTaskDelay(10);
+
+            if(!client->is_wifi_connected()) {
+                client->ensure_wifi_connection(5);
+                ESP_LOGW(TAG, "Disconnected from AP");
+            }
+
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
             int len = client->socket_handler_.recv(msg);

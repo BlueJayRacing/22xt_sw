@@ -15,10 +15,9 @@ esp_err_t SocketHandler::init(int port_) {
     socklen = sizeof(sockaddr);
     port = port_;
     
-    struct sockaddr_in * dest_addr = (struct sockaddr_in *)&dest_addr6;
-    dest_addr->sin_addr.s_addr = htonl(INADDR_ANY);
-    dest_addr->sin_family = AF_INET;
-    dest_addr->sin_port = htons(port);
+    dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(port);
 
     return partial_socket_init();
 }
@@ -34,14 +33,14 @@ esp_err_t SocketHandler::partial_socket_init() {
     }
 
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    int err = bind(sock, (struct sockaddr *)&dest_addr6, sizeof(dest_addr6));
+    int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (err < 0)
     {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
         return ESP_FAIL;
     }
     
-    ESP_LOGI(TAG, "Socket created");
+    ESP_LOGI(TAG, "Socket created with port %d", ntohs(dest_addr.sin_port));
     return ESP_OK;
 }
 
@@ -66,7 +65,7 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
         partial_socket_init();
     }
 
-    int err = sendto(sock, buf.data(), buf_len, 0, (struct sockaddr *) &dest_addr, socklen);
+    int err = sendto(sock, buf.data(), buf_len - 1, 0, (struct sockaddr *) &dest_addr, socklen);
 
     if(err < 0) {
         ESP_LOGE(TAG, "Error sending message over socket %d", err);
@@ -78,7 +77,7 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
     return ESP_OK;
 }
 
-int SocketHandler::recv(Message * msg) {
+int SocketHandler::srecv(Message * msg) {
     // lockGuard guard(mutex);
 
     struct sockaddr_in source_addr;

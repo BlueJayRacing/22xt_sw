@@ -3,7 +3,7 @@
 #include "esp_event.h"
 #include "w25n04kv.hpp"
 #include <inttypes.h>
-#include <vector>
+#include <array>
 
 #define SPI2_MOSI_PIN         18
 #define SPI2_MISO_PIN         20
@@ -24,16 +24,16 @@ class WSG_MEM {
     WSG_MEM();
 
     esp_err_t wait_for_ready(int timeout = 1000);
-    esp_err_t init();
-    esp_err_t write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr);
-    esp_err_t read_all(uint32_t page_addr, uint16_t column_addr, std::vector<uint8_t>& rx_data);
+    esp_err_t init(w25n04kv_init_param_t flash);
+    esp_err_t write(uint64_t timestamp, std::array<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr);
+    esp_err_t read_all(uint32_t page_addr, uint16_t column_addr, std::array<uint8_t>& rx_data);
     esp_err_t update_meta(uint32_t page_addr, uint16_t column_addr);
     esp_err_t reset();
     esp_err_t read_and_interpret_meta();
-    esp_err_t indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs);
-    esp_err_t cont_write(std::vector<uint16_t>& wsg_data);
+    esp_err_t indiv_write(uint64_t timestamp, std::array<uint16_t>& wsgs);
+    esp_err_t cont_write(std::array<uint16_t>& wsg_data);
     esp_err_t init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_);
-    esp_err_t read_meta(std::vector<uint8_t>& rx_data);
+    esp_err_t read_meta(std::array<uint8_t>& rx_data);
     void read_page(uint32_t page_addr);
     void nuke();
     esp_err_t set_dac_bias(uint16_t dac_bias);
@@ -44,10 +44,10 @@ class WSG_MEM {
 
   private:
     uint8_t block_size = (1 << 6);
-    std::vector<wsg_data> interpret_read_data(std::vector<uint8_t>& rx_data);
-    std::vector<uint8_t> format_send_data(uint64_t timestamp, std::vector<uint16_t>& wsgs);
-    void interpret_meta_data(std::vector<uint8_t>& rx_data);
-    bool meta_empty(std::vector<uint8_t> meta);
+    std::array<wsg_data> interpret_read_data(std::array<uint8_t>& rx_data);
+    std::array<uint8_t> format_send_data(uint64_t timestamp, std::array<uint16_t>& wsgs);
+    void interpret_meta_data(std::array<uint8_t>& rx_data);
+    bool meta_empty(std::array<uint8_t> meta);
 
     W25N04KV spi_flash_;
     uint32_t last_page   = 1;
