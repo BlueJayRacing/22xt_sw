@@ -46,7 +46,7 @@ esp_err_t WSG_MEM::wait_for_ready(int timeout)
     return ESP_ERR_TIMEOUT;
 }
 
-bool WSG_MEM::meta_empty(std::array<uint8_t> meta)
+bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
 {
     for (int i = 0; i < METADATA_SIZE; i++) {
         if (meta[i] != 255) {
@@ -71,7 +71,7 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
     wsg_id      = wsg_id_;
     dac_bias   = dac_bias_;
 
-    std::array<uint8_t> tx_data(METADATA_SIZE);
+    std::vector<uint8_t> tx_data(METADATA_SIZE);
     // updating first page with metadata
     for (int i = 0; i < 4; i++) {
         tx_data[i] = (page >> ((3 - i) * 8)) & 0xFF;
@@ -124,13 +124,15 @@ esp_err_t WSG_MEM::init(w25n04kv_init_param_t flash)
     // meta data initialization
     ret = read_and_interpret_meta();
 
+    data_count = 0;
+
     return ret;
 }
 
-std::array<wsg_data> WSG_MEM::interpret_read_data(std::array<uint8_t>& rx_data)
+std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data)
 {
     int len = rx_data.size() / CHUNK_SIZE;
-    std::array<wsg_data> wsgs(len);
+    std::vector<wsg_data> wsgs(len);
     // we need to read the timestamp and wsg values into the elements
     for (int l = 0; l < len; l++) {
         // the incoming data will be read in a large stream, and there are 
@@ -160,13 +162,13 @@ std::array<wsg_data> WSG_MEM::interpret_read_data(std::array<uint8_t>& rx_data)
     return wsgs;
 }
 
-std::array<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::array<uint16_t>& wsgs)
+std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 {
     //
     // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
     
     ESP_LOGI(TAG, "Current time: %llu", timestamp);
-    std::array<uint8_t> output(CHUNK_SIZE);
+    std::vector<uint8_t> output(CHUNK_SIZE);
 
     // splitting time into 8 bytes
     for (int i = 0; i < 8; i++) {
@@ -189,10 +191,10 @@ std::array<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::array<uin
     return output;
 }
 
-esp_err_t WSG_MEM::write(uint64_t timestamp, std::array<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
+esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32_t page_addr, uint16_t column_addr)
 {
 
-    std::array<uint8_t> tx_data = format_send_data(timestamp, wsgs);
+    std::vector<uint8_t> tx_data = format_send_data(timestamp, wsgs);
     // std::array<uint8_t> tx_data = {1, 2, 3};
     ESP_LOGI(TAG, "Writing page");
 
@@ -257,7 +259,7 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::array<uint16_t>& wsgs, uint32_
 //     return ret;
 // }
 
-void WSG_MEM::interpret_meta_data(std::array<uint8_t>& rx_data)
+void WSG_MEM::interpret_meta_data(std::vector<uint8_t>& rx_data)
 {
     last_page   = 0;
     last_column = 0;
@@ -277,6 +279,14 @@ void WSG_MEM::interpret_meta_data(std::array<uint8_t>& rx_data)
     }
 }
 
+uint32_t WSG_MEM::get_last_page() {
+    return last_page;
+}
+
+uint16_t WSG_MEM::get_last_column() {
+    return last_column;
+}
+
 esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
 {
     // erase block first, then rewrite metadata
@@ -284,7 +294,7 @@ esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
     return init_meta(page_addr, column_addr, wsg_id, dac_bias);
 }
 
-esp_err_t WSG_MEM::read_meta(std::array<uint8_t>& rx_data)
+esp_err_t WSG_MEM::read_meta(std::vector<uint8_t>& rx_data)
 {
     vTaskDelay(10);
     esp_err_t ret = spi_flash_.readPage(rx_data, META_PAGE, 0);
@@ -300,7 +310,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     // update_meta(page_addr, column_addr);
     // wait_for_ready();
 
-    std::array<uint8_t> metadata(METADATA_SIZE);
+    std::vector<uint8_t> metadata(METADATA_SIZE);
     ESP_LOGI(TAG, "Reading metadata");
     ret = read_meta(metadata);
 
@@ -361,7 +371,7 @@ void WSG_MEM::nuke()
     spi_flash_.eraseBlock(0);
     // wait_for_ready();
 }
-esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::array<uint16_t>& wsgs)
+esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 {
     esp_err_t ret;
     if ((last_page % METADATA_UPDATE_INT) == 0) {

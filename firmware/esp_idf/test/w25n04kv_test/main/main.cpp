@@ -7,9 +7,9 @@
 
 #include <w25n04kv.hpp>
 
-#define SPI2_MOSI_PIN 18
-#define SPI2_MISO_PIN 20
-#define SPI2_SCLK_PIN 19
+#define SPI2_MOSI_PIN 9
+#define SPI2_MISO_PIN 8
+#define SPI2_SCLK_PIN 7
 #define TEST_LENGTH   12
 W25N04KV spi_flash_;
 
@@ -26,16 +26,16 @@ extern "C" void app_main(void)
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
-    spi_cfg.mosi_io_num   = SPI2_MOSI_PIN;
-    spi_cfg.miso_io_num   = SPI2_MISO_PIN;
-    spi_cfg.sclk_io_num   = SPI2_SCLK_PIN;
+    spi_cfg.mosi_io_num   = GPIO_NUM_9;
+    spi_cfg.miso_io_num   = GPIO_NUM_8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin   = GPIO_NUM_1;
+    flash_init_params.cs_pin   = GPIO_NUM_12;
     flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
