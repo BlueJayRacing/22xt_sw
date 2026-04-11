@@ -285,10 +285,12 @@ void setup() {
     // Initialize SPI
     SPI.begin();
 
+#ifdef ESP_TIMESYNC
     // start timesync over spi
     baja::util::Debug::info("Starting time sync with esp");
     NTPviaSPI sync(&SPI1, 36, esp_spi_settings);
     sync.sync();
+#endif
     
     // Initialize channel configurations
     bool configSuccess = baja::adc::initializeChannelConfigs(
