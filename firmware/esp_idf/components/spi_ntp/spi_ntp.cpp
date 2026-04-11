@@ -108,7 +108,7 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
     settings.mosi_io_num      = 9;
     settings.miso_io_num      = 8;
     settings.sclk_io_num      = 7;
-    slave_config.spics_io_num = 4;
+    slave_config.spics_io_num = 1;
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
@@ -191,7 +191,7 @@ esp_err_t NTPviaSPI::sync()
     // trans_pre.length    = dummy_buf.size() << 3;
     trans_pre.length = 8 * 8;  // 64 bits
     trans_pre.tx_buffer = dummy_buf.data();
-    trans_pre.rx_buffer = rx_pre;
+    trans_pre.rx_buffer = rx_buf_trans_pre.data();
     trans_pre.user      = this;
 
     // spi_slave_transaction_t trans2;
@@ -386,7 +386,6 @@ esp_err_t NTPviaSPI::sync()
 
     for (int i = 0; i < 8; i++) {
     }
-    delete rx_pre;
 
     return ESP_OK;
 }
