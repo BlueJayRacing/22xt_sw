@@ -35,7 +35,7 @@ extern "C" void app_main(void)
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin   = GPIO_NUM_12;
+    flash_init_params.cs_pin   = GPIO_NUM_46;
     flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
@@ -68,39 +68,44 @@ extern "C" void app_main(void)
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
 
-    uint32_t page_address = 0b00000000000010; // std::rand() % W25N04KV::NUM_PAGES;
+    // gpio_set_direction(GPIO_NUM_46, GPIO_MODE_OUTPUT);
+    // gpio_set_level(GPIO_NUM_47, 1);
+    while(1) {
+        
+       uint32_t page_address = std::rand() % W25N04KV::NUM_PAGES;
+        // 0xxxxx00
 
-    // 0xxxxx00
+        ESP_LOGI(TAG, "Page address: %d", (int)page_address);
 
-    ESP_LOGI(TAG, "Page address: %d", (int)page_address);
+        ESP_LOGI(TAG, "Erasing page");
 
-    ESP_LOGI(TAG, "Erasing page");
+        spi_flash_.eraseBlock(page_address); // & 0x1FFC0);
 
-    spi_flash_.eraseBlock(page_address); // & 0x1FFC0);
-
-    vTaskDelay(100);
-
-    ESP_LOGI(TAG, "Writing page");
-
-    for (int i = 0; i < TEST_LENGTH; i++) {
-        ESP_LOGI(TAG, "Write data %d", tx_data[i]);
-        // ESP_LOGI(TAG, "RX data %d", rx_data[i]);
-    }
-
-    spi_flash_.writePage(tx_data, page_address, 1);
-
-    spi_flash_.printStatusReg();
-
-    int k = 1;
-    for (int i = 0; i < k; i++) {
         vTaskDelay(100);
-        spi_flash_.readPage(rx_data, page_address, 0);
-        for (int i = 0; i < TEST_LENGTH; i++) {
-            ESP_LOGI(TAG, "Read data %d", rx_data[i]);
-        }
-    }
-    vTaskDelay(100);
-    spi_flash_.eraseBlock(page_address);
 
-    ESP_LOGI(TAG, "Initialized SPI Flash");
+        ESP_LOGI(TAG, "Writing page");
+
+        for (int i = 0; i < TEST_LENGTH; i++) {
+            ESP_LOGI(TAG, "Write data %d", tx_data[i]);
+            // ESP_LOGI(TAG, "RX data %d", rx_data[i]);
+        }
+
+        spi_flash_.writePage(tx_data, page_address, 1);
+
+        spi_flash_.enableWrite();
+        spi_flash_.printStatusReg();
+        spi_flash_.printConfigReg();
+
+        int k = 1;
+        for (int i = 0; i < k; i++) {
+            vTaskDelay(100);
+            spi_flash_.readPage(rx_data, page_address, 0);
+            for (int i = 0; i < TEST_LENGTH; i++) {
+                ESP_LOGI(TAG, "Read data %d", rx_data[i]);
+            }
+        }
+        vTaskDelay(100);
+        spi_flash_.eraseBlock(page_address);
+    }
+
 }

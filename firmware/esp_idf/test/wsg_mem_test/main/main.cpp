@@ -32,6 +32,9 @@ void test_meta()
     assert(wsg_mem.dac_bias == 32);
 }
 
+void test_write_data() {
+    
+}
 // void test_write_column(WSG_MEM& w)
 // {
 //     w.nuke();

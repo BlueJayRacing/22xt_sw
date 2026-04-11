@@ -18,6 +18,7 @@ W25N04KV::W25N04KV() {}
 esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
 {
     wp_pin_ = t_init_param.wp_pin;
+    gpio_set_direction(t_init_param.cs_pin, GPIO_MODE_OUTPUT);
 
     esp_err_t ret;
     spi_device_interface_config_t spi_device_cfg;
@@ -104,7 +105,9 @@ esp_err_t W25N04KV::transfer(const uint8_t op_code, std::vector<uint8_t>& rx_dat
     // Set rx data buffer
     ext_t.base.rx_buffer = rx_data.data();
     ext_t.base.rxlength  = rx_data.size() << 3;
+    // spi_device_acquire_bus();
     esp_err_t err        = spi_device_polling_transmit(spi_dev_, &(ext_t.base));
+    // spi_device_release_bus();
     if (err) {
         return err;
     }
@@ -225,7 +228,7 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Value of read status register: %d", (int)rx_data[0]);
+    ESP_LOGI(TAG, "Value of read status register: %d", (uint8_t)rx_data[0]);
 
     device_status->ecc_status      = w25n04kv_ecc_status_t((rx_data[0] >> 4) & 0x03);
     device_status->program_failure = rx_data[0] & 0x08;
@@ -246,7 +249,7 @@ esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Value of read status register: %d", (int)rx_data[0]);
+    ESP_LOGI(TAG, "Value of read status register: %d", (uint8_t)rx_data[0]);
 
     device_config->otp_lock               = rx_data[0] & 0x40;
     device_config->otp_mode               = rx_data[0] & 0x20;

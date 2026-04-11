@@ -10,8 +10,7 @@
 #include <vector>
 #include <wsg_mem.hpp>
 
-#define SPI_MOSI_PIN 18
-#define SPI_SCLK_PIN 30
+#define DATA_READ_ONLY true
 
 static const char* TAG                           = "main";
 static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1,
@@ -63,6 +62,7 @@ extern "C" void app_main(void) {
         return;
     }
 
+#ifndef DATA_READ_ONLY
     w25n04kv_init_param_t flash_params = {
         .cs_pin = GPIO_NUM_41,
         .wp_pin = GPIO_NUM_NC,
@@ -101,7 +101,10 @@ extern "C" void app_main(void) {
 
         // start tasks
         xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 2, &write_handle, (UBaseType_t)0);
+#endif
+
         xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 1, &data_read_handle, (UBaseType_t)1);
+#ifndef DATA_READ_ONLY
     } else if (msg->payload_len <= 2 && msg->payload[0] == 0x04) {
         // start calibration task
         if (msg->payload_len == 2) {
@@ -117,6 +120,8 @@ extern "C" void app_main(void) {
     } else {
         ESP_LOGE(TAG, "Failed to boot due to incorrect spi instruction: %d, payload len: %d", msg->payload[0], msg->payload_len);
     }
+#endif
+
     vTaskDelete(NULL);
 }
 
@@ -147,7 +152,11 @@ void vTaskDataProcessing(void* pvParameter)
     driveSensorSetup sensors;
     sensors.init(ads1120_params, ad5626_params);
 
+#ifndef DATA_READ_ONLY
     sensors.setDACValue(wsg_mem.dac_bias);
+#else
+    sensors.setDACValue(0);
+#endif
 
     int array_ct = 0;
     std::array<wsg_data_t, 6> udp_data_buf;
@@ -157,6 +166,8 @@ void vTaskDataProcessing(void* pvParameter)
 
     drive_cfg_t drive_cfg;
     drive_cfg.mode = drive_cfg_t::MEASURING_MODE;
+
+    ESP_LOGI(TAG, "INIT SHIT");
 
     while (1) {
         sample = new wsg_data_t();
@@ -168,12 +179,13 @@ void vTaskDataProcessing(void* pvParameter)
             drive_cfg.channel = SG_CHANNELS[i];
             sensors.configure(drive_cfg);
             vTaskDelay(pdMS_TO_TICKS(10));
-            sensors.measure(true, &measure);
+            sensors.measure(false, &measure);
 
             sample->sample[i] = measure.adc_value;
-            ESP_LOGI(TAG, "Data (%d) %d\n", i, measure.adc_value);
+            ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
         }
 
+#ifndef DATA_READ_ONLY
         if (xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
             delete sample;
             ESP_LOGW(TAG, "failed to add sample to flash mem queue");
@@ -192,6 +204,9 @@ void vTaskDataProcessing(void* pvParameter)
             serialize_msg_and_publish(udp_data_buf);
             array_ct = 0;
         }
+#else
+        delete sample;
+#endif
     }
 }
 

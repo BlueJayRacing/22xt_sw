@@ -50,7 +50,7 @@ extern "C" void app_main(void)
         for (int i = 0; i <= 10; i++) {
             dac_.setLevel(dac_value);
             ESP_LOGI(TAG, "Level: %d, Voltage %f", dac_value, 3.3f * dac_value / AD5626::MAX_LEVEL_VALUE);
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(5000));
             dac_value += dac_incr;
         }
 
