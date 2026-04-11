@@ -11,7 +11,7 @@
 
 #define US_PER_SECOND 1000000
 static const char* TAG   = "SPI NTP";
-gpio_num_t handshake_pin = GPIO_NUM_2;
+gpio_num_t handshake_pin = GPIO_NUM_3;
 
 uint64_t buf_to_uint64(std::array<uint8_t, 8> buf)
 {
