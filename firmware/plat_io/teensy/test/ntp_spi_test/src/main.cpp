@@ -11,14 +11,16 @@ void setup()
     Serial.begin(115200);
     while (!Serial && millis() < 3000);
     Serial.printf("setup\n");
-
-    SPI.begin();
+    
+    SPI1.begin();
+    SPI1.setMISO(39); 
 }
 
 void loop()
 {
     // SPISettings settings(1000000, LSBFIRST, SPI_MODE0);
-    NTPviaSPI sync(&SPI, 0, 1, settings);
+    // SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_
+    NTPviaSPI sync(&SPI1, 0, 2, settings);
     if (sync.sync() == 0) {
         uint64_t now  = getMicrosecondsSinceEpoch();
         uint32_t sec  = (uint32_t)(now / 1000000ULL);

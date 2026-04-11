@@ -182,12 +182,14 @@ esp_err_t NTPviaSPI::sync()
         trans[i]->user      = this;
     }
 
-    std::array<uint8_t, 1> dummy_buf = {0x01};
-    uint8_t* rx_pre                  = (uint8_t*)spi_bus_dma_memory_alloc(spi_host, 8, 0);
+    std::array<uint8_t, 8> dummy_buf = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // std::array<uint8_t, 1> dummy_buf = {0x01};
+    std::array<uint8_t, 8> rx_buf_trans_pre;
     spi_slave_transaction_t trans_pre;
     memset(&trans_pre, 0, sizeof(spi_slave_transaction_t));
     trans_pre.flags     = 0;
-    trans_pre.length    = dummy_buf.size() << 3;
+    // trans_pre.length    = dummy_buf.size() << 3;
+    trans_pre.length = 8 * 8;  // 64 bits
     trans_pre.tx_buffer = dummy_buf.data();
     trans_pre.rx_buffer = rx_pre;
     trans_pre.user      = this;
@@ -211,12 +213,13 @@ esp_err_t NTPviaSPI::sync()
     // trans3.user      = this;
 
     // queue all transactions upfront
-    spi_slave_queue_trans(spi_host, &trans_pre, portMAX_DELAY);
-    esp_err_t err00 = spi_slave_queue_trans(spi_host, trans[0], portMAX_DELAY);
-    esp_err_t err10 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
-    esp_err_t err20 = spi_slave_queue_trans(spi_host, trans[2], portMAX_DELAY);
+    // spi_slave_queue_trans(spi_host, &trans_pre, portMAX_DELAY);
+    // esp_err_t err00 = spi_slave_queue_trans(spi_host, trans[0], portMAX_DELAY);
+    // esp_err_t err10 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
+    // esp_err_t err20 = spi_slave_queue_trans(spi_host, trans[2], portMAX_DELAY);
 
-    // pre-sync transaction
+    // pre-sync transaction 
+    spi_slave_queue_trans(spi_host, &trans_pre, portMAX_DELAY);
     spi_slave_transaction_t* out_trans;
     esp_err_t err = spi_slave_get_trans_result(spi_host, &out_trans, portMAX_DELAY);
     if (err != ESP_OK) {
@@ -227,6 +230,7 @@ esp_err_t NTPviaSPI::sync()
     ESP_LOGI(TAG, "pre-sync done");
 
     // transaction 0
+    esp_err_t err00 = spi_slave_queue_trans(spi_host, trans[0], portMAX_DELAY);
     if (err00 != ESP_OK) {
         ESP_LOGI(TAG, "Failed queuing transaction %d", 0);
         return err00;
@@ -246,6 +250,7 @@ esp_err_t NTPviaSPI::sync()
              d[7]);
 
     // transaction 1
+    esp_err_t err10 = spi_slave_queue_trans(spi_host, trans[1], portMAX_DELAY);
     if (err10 != ESP_OK) {
         ESP_LOGI(TAG, "Failed queuing transaction 1");
         return err10;
@@ -266,6 +271,7 @@ esp_err_t NTPviaSPI::sync()
              d[7]);
 
     // transaction 2
+    esp_err_t err20 = spi_slave_queue_trans(spi_host, trans[2], portMAX_DELAY);
     if (err20 != ESP_OK) {
         ESP_LOGI(TAG, "Failed queuing transaction 2");
         return err20;
