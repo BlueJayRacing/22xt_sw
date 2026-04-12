@@ -249,15 +249,30 @@ esp_err_t W25N04KV::readConfigRegister(w25n04kv_device_config_t* device_config)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Value of read status register: %d", (uint8_t)rx_data[0]);
+    // CHAT-GPT Code
 
-    device_config->otp_lock               = rx_data[0] & 0x40;
-    device_config->otp_mode               = rx_data[0] & 0x20;
-    device_config->status_reg_1_lock      = rx_data[0] & 0x10;
-    device_config->ecc                    = rx_data[0] & 0x08;
-    device_config->buffer_mode            = rx_data[0] & 0x04;
-    device_config->output_driver_strength = rx_data[0] & 0x02;
-    device_config->hold_disable           = rx_data[0] & 0x01;
+    uint8_t reg = rx_data[0];
+    ESP_LOGI(TAG, "Value of config/status register 2: 0x%02X", reg);
+
+    device_config->otp_lock = (reg >> 7) & 0x01; // S7
+    device_config->otp_mode = (reg >> 6) & 0x01; // S6
+    device_config->status_reg_1_lock = (reg >> 5) & 0x01; // S5
+    device_config->ecc = (reg >> 4) & 0x01; // S4
+    device_config->buffer_mode = (reg >> 3) & 0x01; // S3
+    device_config->output_driver_strength = (reg >> 1) & 0x03; // S2:S1
+    device_config->hold_disable = reg & 0x01; // S0
+
+    // Original Code Below
+
+    // ESP_LOGI(TAG, "Value of read status register: %d", (uint8_t)rx_data[0]);
+
+    // device_config->otp_lock               = rx_data[0] & 0x40;
+    // device_config->otp_mode               = rx_data[0] & 0x20;
+    // device_config->status_reg_1_lock      = rx_data[0] & 0x10;
+    // device_config->ecc                    = rx_data[0] & 0x08;
+    // device_config->buffer_mode            = rx_data[0] & 0x04;
+    // device_config->output_driver_strength = rx_data[0] & 0x02;
+    // device_config->hold_disable           = rx_data[0] & 0x01;
 
     return ESP_OK;
 }

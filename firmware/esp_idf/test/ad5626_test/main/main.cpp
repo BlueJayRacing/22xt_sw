@@ -2,6 +2,7 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <ad5626.hpp>
 
@@ -56,4 +57,12 @@ extern "C" void app_main(void)
 
         ESP_LOGI(TAG, "Passed setting values on DAC");
     }
+
+        // ESP_LOGI(TAG, "Setting half-way point value on DAC");
+
+        // int dac_value = AD5626::MAX_LEVEL_VALUE / 2;
+        //     dac_.setLevel(dac_value);
+        //     ESP_LOGI(TAG, "Level: %d, Voltage %f", dac_value, 3.3f * dac_value / AD5626::MAX_LEVEL_VALUE);
+
+        // ESP_LOGI(TAG, "Set half-way point on DAC complete");
 }

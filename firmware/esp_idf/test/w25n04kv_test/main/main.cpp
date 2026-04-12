@@ -35,7 +35,7 @@ extern "C" void app_main(void)
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin   = GPIO_NUM_46;
+    flash_init_params.cs_pin   = GPIO_NUM_21;
     flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
@@ -90,7 +90,7 @@ extern "C" void app_main(void)
             // ESP_LOGI(TAG, "RX data %d", rx_data[i]);
         }
 
-        spi_flash_.writePage(tx_data, page_address, 1);
+        spi_flash_.writePage(tx_data, page_address, 0);
 
         spi_flash_.enableWrite();
         spi_flash_.printStatusReg();

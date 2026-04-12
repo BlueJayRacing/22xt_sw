@@ -51,7 +51,8 @@ typedef struct w25n04kv_device_config {
     bool status_reg_1_lock;
     bool ecc;
     bool buffer_mode;
-    bool output_driver_strength;
+    // bool output_driver_strength; // OG code
+    uint8_t output_driver_strength; // chat
     bool hold_disable;
 } w25n04kv_device_config_t;
 

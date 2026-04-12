@@ -4,7 +4,7 @@
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
-  "idf.portWin": "COM11",
+  "idf.portWin": "COM10",
   "files.associations": {
     "array": "cpp",
     "atomic": "cpp",
@@ -54,9 +54,8 @@
     "*.inc": "cpp"
   },
   "idf.port": "/dev/ttyACM0",
-  "idf.currentSetup": "/home/cyanbrown/esp/v5.5/esp-idf",
+  "idf.currentSetup": "C:\\Users\\crisp\\esp\\v5.4.2\\esp-idf",
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32s3",
-    "OPENOCD_USB_ADAPTER_LOCATION": "5-1"
+    "IDF_TARGET": "esp32s3"
   }
 }
