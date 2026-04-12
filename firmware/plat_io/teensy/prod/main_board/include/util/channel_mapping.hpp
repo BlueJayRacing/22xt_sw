@@ -37,7 +37,7 @@
  };
  
  // Static array of all channel names in their index order
- static const std::array<ChannelName, 16> ALL_CHANNEL_NAMES = {
+ static const std::array<ChannelName, 18> ALL_CHANNEL_NAMES = {
      ChannelName::GND,            
      ChannelName::SG2,            
      ChannelName::SG1,            
@@ -141,17 +141,11 @@
      // Enable all data channels by default, but not reference channels
      switch (channelName) {
          case ChannelName::GND:
-         case ChannelName::FIVE_V_REFUL:
          case ChannelName::TWO_5_REF:
-         case ChannelName::TWO_5_REFUL:
+         case ChannelName::ESP_3V3:
          case ChannelName::SG1:
          case ChannelName::SG2:
              return false; // Reference channels disabled by default
-         case ChannelName::CHANNEL_1:
-         case ChannelName::CHANNEL_2:
-         case ChannelName::CHANNEL_3:
-         case ChannelName::CHANNEL_4:
-         case ChannelName::CHANNEL_5:
          case ChannelName::CHANNEL_6:
          case ChannelName::CHANNEL_7:
          case ChannelName::CHANNEL_8:
@@ -167,7 +161,7 @@
   * @brief Get all available channel names
   * @return Array of all channel names
   */
- inline const std::array<ChannelName, 16>& getAllChannelNames() {
+ inline const std::array<ChannelName, 18>& getAllChannelNames() {
      return ALL_CHANNEL_NAMES;
  }
  

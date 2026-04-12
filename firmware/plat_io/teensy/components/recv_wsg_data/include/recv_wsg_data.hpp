@@ -13,13 +13,6 @@ uint64_t buf_to_uint64(uint8_t * start);
 uint32_t buf_to_uint32(uint8_t * start);
 uint16_t buf_to_uint16(uint8_t * start);
 
-typedef struct wsg_data {
-    uint8_t wsg_id; // 1 byte
-    std::array<uint16_t, 3> sample; // 16 bit 2 byte * 3 = 6 bytes
-    uint64_t timestamp; // 8 byte
-    uint32_t dac_bias; // 4 byte
-} wsg_data_t;
-
 class SpiWsgRecv {
     public:
         SpiWsgRecv(SPIClass * spi_host_, uint8_t cs_pin_, SPISettings settings_);
