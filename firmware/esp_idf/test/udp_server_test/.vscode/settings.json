@@ -13,5 +13,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=/home/cyanbrown/projects/22xt_sw/firmware/esp_idf/test/udp_server_test/build"
-  ]
+  ],
+  "idf.currentSetup": "/Users/emma/.espressif/v6.0/esp-idf"
 }

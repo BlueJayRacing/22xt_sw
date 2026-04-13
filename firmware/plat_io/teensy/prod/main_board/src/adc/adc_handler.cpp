@@ -210,28 +210,28 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
     
     // Wait for ready with timeout
     uint32_t timeout = timeout_ms == 0 ? 0xFFFFFFFF : timeout_ms * 10; // Convert to internal units
-    int result = adcDriver_.waitForReady(timeout);
+    // int result = adcDriver_.waitForReady(timeout);
     
     // Calculate wait time
     uint32_t wait_time = micros() - wait_start;
     totalWaitTime += wait_time;
     
     // Check wait result
-    if (result < 0) {
-        if (result == TIMEOUT) {
-            // This is normal if timeout_ms was specified
-            return AH_TIMEOUT;
-        }
+    // if (result < 0) {
+    //     if (result == TIMEOUT) {
+    //         // This is normal if timeout_ms was specified
+    //         return AH_TIMEOUT;
+    //     }
         
-        // Only log occasionally to avoid spamming
-        static uint32_t lastWarnTime = 0;
-        uint32_t currentTime = millis();
-        if (currentTime - lastWarnTime > 1000) { // Only warn once per second
-            util::Debug::warning("ADC: waitForReady failed with code " + String(result));
-            lastWarnTime = currentTime;
-        }
-        return AH_COMM_ERR;
-    }
+    //     // Only log occasionally to avoid spamming
+    //     static uint32_t lastWarnTime = 0;
+    //     uint32_t currentTime = millis();
+    //     if (currentTime - lastWarnTime > 1000) { // Only warn once per second
+    //         util::Debug::warning("ADC: waitForReady failed with code " + String(result));
+    //         lastWarnTime = currentTime;
+    //     }
+    //     return AH_COMM_ERR;
+    // }
     
     // Start timing for read operation
     uint32_t read_start = micros();

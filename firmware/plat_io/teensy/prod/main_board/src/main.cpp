@@ -32,7 +32,7 @@
 uint32_t freeRamLow = UINT32_MAX;
 
 // Pin definitions
-const uint8_t ADC_CS_PIN = 10;     // ADC chip select pin
+const uint8_t ADC_CS_PIN = 37;     // ADC chip select pin
 const uint8_t SD_CS_PIN = 254;     // SD card CS pin (for SPI fallback)
 
 // UDP server configuration
