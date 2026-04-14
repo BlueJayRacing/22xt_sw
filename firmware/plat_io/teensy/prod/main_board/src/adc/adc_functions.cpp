@@ -141,7 +141,7 @@ bool processSample() {
             // IMPORTANT: Convert ADC channel index to internal channel ID
             uint8_t internalChannelId = static_cast<uint8_t>(
                 util::mapADCToInternalID(adcSample.status.active_channel));
-
+                
             uint64_t conversion_time;
             adcHandler_->getLastConversionTime(conversion_time);
             
@@ -177,6 +177,8 @@ bool processSample() {
             }
             
         }
+    } else {
+        util::Debug::info("error in read");
     }
     
     // Calculate processing time if we actually did work

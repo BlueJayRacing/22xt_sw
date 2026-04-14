@@ -44,7 +44,7 @@ bool ADC7175Handler::begin(uint8_t csPin, SPIClass& spiInterface,
     // Set up the channel map initially with all channels disabled
     initParam.chan_map.resize(ADC_CHANNEL_COUNT);
     for (int i = 0; i < ADC_CHANNEL_COUNT; i++) {
-        initParam.chan_map[i].channel_enable = (i < 2); // Only enable channels 0 and 1 for initial test
+        initParam.chan_map[i].channel_enable = true; // Only enable channels 0 and 1 for initial test
         initParam.chan_map[i].setup_sel = 0;
         
         // Default to AINx for positive input and REF_M for negative
@@ -65,7 +65,7 @@ bool ADC7175Handler::begin(uint8_t csPin, SPIClass& spiInterface,
     initParam.setups.push_back(setup);
     
     // Initialize the ADC with debugging
-    int result = adcDriver_.init(initParam, spiInterface_, csPin_, SPISettings(10000000, MSBFIRST, SPI_MODE3));
+    int result = adcDriver_.init(initParam, spiInterface_, csPin_, SPISettings(5000000, MSBFIRST, SPI_MODE3));
     if (result < 0) {
         util::Debug::error("ADC: Initialization failed with code " + String(result));
         return false;
@@ -132,7 +132,7 @@ bool ADC7175Handler::configureChannel(const ChannelConfig& config) {
         return false;
     }
     
-    // Set the gain
+    // // Set the gain
     result = adcDriver_.setGain(config.gain, config.setupIndex);
     if (result < 0) {
         util::Debug::error("ADC: setGain failed with code " + String(result));
@@ -154,11 +154,11 @@ bool ADC7175Handler::startSampling() {
     sampleCount_ = 0;
     
     // Set the ADC to continuous conversion mode
-    int result = adcDriver_.setADCMode(CONTINUOUS);
-    if (result < 0) {
-        util::Debug::error("ADC: setADCMode failed with code " + String(result));
-        return false;
-    }
+    // int result = adcDriver_.setADCMode(CONTINUOUS);
+    // if (result < 0) {
+    //     util::Debug::error("ADC: setADCMode failed with code " + String(result));
+    //     return false;
+    // }
     
     // Mark as started
     samplingActive_ = true;
@@ -210,7 +210,7 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
     
     // Wait for ready with timeout
     uint32_t timeout = timeout_ms == 0 ? 0xFFFFFFFF : timeout_ms * 10; // Convert to internal units
-    // int result = adcDriver_.waitForReady(timeout);
+    int result = adcDriver_.waitForReady(timeout);
     
     // Calculate wait time
     uint32_t wait_time = micros() - wait_start;
@@ -239,8 +239,13 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
     // Read the sample
     ad717x_data_t sample;
     if (!readSample(sample)) {
+        util::Debug::info("comm error");
         return AH_COMM_ERR;
     }
+
+    if(sample.status.active_channel < 10 || sample.status.active_channel > 13)
+    util::Debug::info(F("Read from ADC: ") + String(sample.value) + F(" with channel id: ") + String(sample.status.active_channel));
+
 
     // Cache the conversion result
     lastConversion_ = sample;
@@ -331,6 +336,7 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
 
 bool ADC7175Handler::readSample(ad717x_data_t& sample) {
     // Read a sample from the ADC
+    adcDriver_.waitForReady(0);
     int result = adcDriver_.contConvReadData(&sample);
     
     if (result < 0) {

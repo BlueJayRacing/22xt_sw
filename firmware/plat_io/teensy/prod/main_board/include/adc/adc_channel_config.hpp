@@ -47,6 +47,7 @@ inline bool initializeChannelConfigs(ChannelConfig* channelConfigs, bool enableA
     // Get all channel names
     const auto& allChannelNames = util::getAllChannelNames();
     
+    util::Debug::info(F("Starting for loop"));
     // Initialize each channel configuration
     for (int i = 0; i < ADC_CHANNEL_COUNT; i++) {
         auto channelName = allChannelNames[i];
@@ -57,9 +58,15 @@ inline bool initializeChannelConfigs(ChannelConfig* channelConfigs, bool enableA
         channelConfigs[i].analogInputs.ainp.neg_input = REF_M; // Use common negative reference
         channelConfigs[i].gain = config::ADC_DEFAULT_GAIN;
         channelConfigs[i].setupIndex = 0;
+
+        util::Debug::info(F("getting channel mapping"));
+        util::Debug::info(F(util::getChannelNameString(channelName).c_str()));
+
         
         // Set name based on mapping
-        channelConfigs[i].name = util::getChannelNameString(channelName);
+        channelConfigs[i].name.assign(util::getChannelNameString(channelName).c_str());
+        // util::Debug::info(F("Setup channel name: "));
+        // util::Debug::info(channelConfigs[i].name);
         
         // Set enabled status based on channel type or configuration flag
         channelConfigs[i].enabled = enableAllChannels ? true : util::shouldChannelBeEnabled(channelName);
