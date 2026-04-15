@@ -67,20 +67,20 @@
  // String representations of channel IDs with descriptive names
  const std::array<std::string, TOTAL_CHANNEL_COUNT> CHANNEL_NAMES = {
      "ADC AIN 0 - Ground reference",
-     "ADC AIN 1 - 5V reference",
-     "ADC AIN 2 - 2.5V reference",
-     "ADC AIN 3 - 2.5V reference (buffered)",
-     "ADC AIN 4 - Strain gauge 2",
-     "ADC AIN 5 - Strain gauge 1",
-     "ADC AIN 6 - Channel 1", 
-     "ADC AIN 7 - Channel 6",
-     "ADC AIN 8 - Channel 2",
-     "ADC AIN 9 - Channel 7",
-     "ADC AIN 10 - Channel 3",
+     "ADC AIN 1 - Strain Guage 2",
+     "ADC AIN 2 - Strain Gauge 1",
+     "ADC AIN 3 - 2.5V ldo",
+     "ADC AIN 4 - linpot 1 (FL)",
+     "ADC AIN 5 - linpot 2 (FR)",
+     "ADC AIN 6 - linpot 3 (RL)", 
+     "ADC AIN 7 - linpot 4 (RR)",
+     "ADC AIN 8 - Steering pot",
+     "ADC AIN 9 - Channel 6",
+     "ADC AIN 10 - Channel 7",
      "ADC AIN 11 - Channel 8",
-     "ADC AIN 12 - Channel 4",
-     "ADC AIN 13 - Channel 9",
-     "ADC AIN 14 - Channel 5",
+     "ADC AIN 12 - Channel 9",
+     "ADC AIN 13 - Channel 10",
+     "ADC AIN 14 - Channel 5v monitor",
      "ADC AIN 15 - Channel 10",
      "DIN 0",
      "DIN 1",
@@ -149,6 +149,7 @@
      
      // Specialized enabling logic for different channel types
      if (id <= 15) {
+        return true;
          // ADC channels - enable all data channels but not reference channels
          switch (id) {
              case 0: // Ground reference

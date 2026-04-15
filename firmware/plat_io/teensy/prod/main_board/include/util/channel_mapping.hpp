@@ -20,8 +20,8 @@
      SG2,            // ADC AIN 1 - strain guage 2
      SG1,            // ADC AIN 2 - strain guage 1
      TWO_5_LDO,      // ADC AIN 3 - 2.5V reference (buffered)
-     LIN_POT_2_FR,   // ADC AIN 5 - linpot 2, FR
      LIN_POT_1_FL,   // ADC AIN 4 - linpot 1, FL
+     LIN_POT_2_FR,   // ADC AIN 5 - linpot 2, FR
      LIN_POT_3_RL,   // ADC AIN 6 - linpot 3, RL
      LIN_POT_4_RR,   // ADC AIN 7 - linpot 4, RR
      STEERING_POT,   // ADC AIN 8 - steering linpot

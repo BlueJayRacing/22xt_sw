@@ -243,10 +243,6 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
         return AH_COMM_ERR;
     }
 
-    if(sample.status.active_channel < 10 || sample.status.active_channel > 13)
-    util::Debug::info(F("Read from ADC: ") + String(sample.value) + F(" with channel id: ") + String(sample.status.active_channel));
-
-
     // Cache the conversion result
     lastConversion_ = sample;
     lastConversionTime_ = getMicrosecondsSinceEpoch();
@@ -260,7 +256,14 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
         util::mapADCToInternalID(sample.status.active_channel));
     
 
-    
+    if (internalChannelId > 15) {
+        util::Debug::info(F("WHAT THE FUCK IS HAPPENING RN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1"));
+    }
+
+    if(lastConversionTime_ == 0) {
+        util::Debug::info(F("ts should never HAPPEN THIS IS A LONG LINE..............."));
+    }
+
     data::ChannelSample channelSample(
         lastConversionTime_,// Microsecond timestamp
         internalChannelId,          // Internal channel ID
@@ -276,10 +279,10 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
         // Only log occasionally to avoid spamming
         static uint32_t lastRingBufferWarnTime = 0;
         uint32_t currentTime = millis();
-        // if (currentTime - lastRingBufferWarnTime > 15000) { // Only warn every 5 seconds
-        //     util::Debug::warning("ADC: Ring buffer full, sample dropped");
-        //     lastRingBufferWarnTime = currentTime;
-        // }
+        if (currentTime - lastRingBufferWarnTime > 15000) { // Only warn every 5 seconds
+            util::Debug::warning("ADC: Ring buffer full, sample dropped");
+            lastRingBufferWarnTime = currentTime;
+        }
         return AH_BUFFERBAD;
     }
     
@@ -336,7 +339,7 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
 
 bool ADC7175Handler::readSample(ad717x_data_t& sample) {
     // Read a sample from the ADC
-    adcDriver_.waitForReady(0);
+    // adcDriver_.waitForReady(0);
     int result = adcDriver_.contConvReadData(&sample);
     
     if (result < 0) {

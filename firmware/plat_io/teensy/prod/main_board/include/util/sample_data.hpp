@@ -21,8 +21,8 @@ struct ChannelSample {
     
     // Default constructor
     ChannelSample() : 
-        timestamp(0), 
-        internalChannelId(0), 
+        timestamp(69), 
+        internalChannelId(69), 
         rawValue(0),
         recordedTimeMs(0) {}
     

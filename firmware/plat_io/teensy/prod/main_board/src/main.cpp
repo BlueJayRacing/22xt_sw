@@ -39,11 +39,11 @@ const char* UDP_SERVER_ADDRESS = "192.168.20.3";
 const uint16_t UDP_SERVER_PORT = 8888;
 
 // Create global buffers in RAM2/EXTMEM to reduce RAM1 usage
-EXTMEM baja::data::ChannelSample ringBufferStorage[baja::config::SAMPLE_RING_BUFFER_SIZE];
+baja::data::ChannelSample ringBufferStorage[baja::config::SAMPLE_RING_BUFFER_SIZE];
 baja::adc::ChannelConfig channelConfigsArray[baja::adc::ADC_CHANNEL_COUNT];
 
 // Define the SdFat RingBuf in EXTMEM
-DMAMEM RingBuf<FsFile, baja::config::SD_RING_BUF_CAPACITY> sdRingBuf;
+EXTMEM RingBuf<FsFile, baja::config::SD_RING_BUF_CAPACITY> sdRingBuf;
 
 // Fast path buffer in DMAMEM for low-latency network transmission
 DMAMEM baja::data::ChannelSample fastBufferStorage[baja::config::FAST_BUFFER_SIZE];
@@ -467,6 +467,18 @@ void loop() {
     } else if (!baja::digital::functions::isRunning()) {
         baja::util::Debug::info(F("Digital not running"));
     }
+
+    // // sampleBuffer
+    // baja::data::ChannelSample channelSample(
+    //     1,// Microsecond timestamp
+    //     1,          // Internal channel ID
+    //     1,               // Raw ADC value
+    //     1                    // Add recorded time
+    // );
+
+    // // baja::util::Debug::info("timstamp of msg: " + String(channelSample.timestamp));
+    
+    // sampleBuffer.write(channelSample);
 
     // receive data from wsg over spi
     // may need to make handler to add it to circle buf
