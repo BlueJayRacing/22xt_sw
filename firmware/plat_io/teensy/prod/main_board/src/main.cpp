@@ -21,7 +21,7 @@
 // Thread modules
 #include "adc/adc_functions.hpp"
 #include "storage/sd_functions.hpp"
-// #include "network/pbudp_functions.hpp"      // Combined PB+UDP thread
+#include "network/pbudp_functions.hpp"      // Combined PB+UDP thread
 #include "digital/digital_functions.hpp"    // Digital input monitoring
 // #include "wsg_streaming/wsg_functions.hpp"
 
@@ -39,11 +39,11 @@ const char* UDP_SERVER_ADDRESS = "192.168.20.3";
 const uint16_t UDP_SERVER_PORT = 8888;
 
 // Create global buffers in RAM2/EXTMEM to reduce RAM1 usage
-baja::data::ChannelSample ringBufferStorage[baja::config::SAMPLE_RING_BUFFER_SIZE];
-baja::adc::ChannelConfig channelConfigsArray[baja::adc::ADC_CHANNEL_COUNT];
+EXTMEM baja::data::ChannelSample ringBufferStorage[baja::config::SAMPLE_RING_BUFFER_SIZE];
+EXTMEM baja::adc::ChannelConfig channelConfigsArray[baja::adc::ADC_CHANNEL_COUNT];
 
 // Define the SdFat RingBuf in EXTMEM
-EXTMEM RingBuf<FsFile, baja::config::SD_RING_BUF_CAPACITY> sdRingBuf;
+DMAMEM RingBuf<FsFile, baja::config::SD_RING_BUF_CAPACITY> sdRingBuf;
 
 // Fast path buffer in DMAMEM for low-latency network transmission
 DMAMEM baja::data::ChannelSample fastBufferStorage[baja::config::FAST_BUFFER_SIZE];
@@ -213,35 +213,35 @@ void printSystemStatus() {
     }
     
     // Print network status
-    // if (networkInitialized && baja::network::functions::isRunning()) {
-    //     uint32_t messagesSent = 0, sampleCount = 0, bytesTransferred = 0, sendErrors = 0;
-    //     baja::network::functions::getStats(messagesSent, sampleCount, bytesTransferred, sendErrors);
+    if (networkInitialized && baja::network::functions::isRunning()) {
+        uint32_t messagesSent = 0, sampleCount = 0, bytesTransferred = 0, sendErrors = 0;
+        baja::network::functions::getStats(messagesSent, sampleCount, bytesTransferred, sendErrors);
         
-    //     float samplesPerMsg = messagesSent > 0 ? (float)sampleCount / messagesSent : 0;
-    //     float msgsPerSec = messagesSent / ((currentTime - startTime) / 1000.0f);
-    //     float kbytesPerSec = bytesTransferred / ((currentTime - startTime) / 1000.0f) / 1024.0f;
+        float samplesPerMsg = messagesSent > 0 ? (float)sampleCount / messagesSent : 0;
+        float msgsPerSec = messagesSent / ((currentTime - startTime) / 1000.0f);
+        float kbytesPerSec = bytesTransferred / ((currentTime - startTime) / 1000.0f) / 1024.0f;
         
-    //     baja::util::Debug::info(F("Network stats: ") + String(messagesSent) + F(" messages sent (") + 
-    //                          String(msgsPerSec, 1) + F(" msgs/sec), ") + 
-    //                          String(sampleCount) + F(" samples (") +
-    //                          String(samplesPerMsg, 1) + F(" samples/msg), ") +
-    //                          String(bytesTransferred / 1024.0f, 1) + F(" KB (") +
-    //                          String(kbytesPerSec, 1) + F(" KB/sec)"));
+        baja::util::Debug::info(F("Network stats: ") + String(messagesSent) + F(" messages sent (") + 
+                             String(msgsPerSec, 1) + F(" msgs/sec), ") + 
+                             String(sampleCount) + F(" samples (") +
+                             String(samplesPerMsg, 1) + F(" samples/msg), ") +
+                             String(bytesTransferred / 1024.0f, 1) + F(" KB (") +
+                             String(kbytesPerSec, 1) + F(" KB/sec)"));
         
-    //     // Print network timing stats
-    //     float avgTime;
-    //     uint32_t minTime, maxTime, messageCount;
-    //     baja::network::functions::getTimingStats(avgTime, minTime, maxTime, messageCount);
+        // Print network timing stats
+        float avgTime;
+        uint32_t minTime, maxTime, messageCount;
+        baja::network::functions::getTimingStats(avgTime, minTime, maxTime, messageCount);
         
-    //     baja::util::Debug::info(F("Network Timing: avg=") + String(avgTime, 1) + 
-    //                          F("µs, min=") + String(minTime) + 
-    //                          F("µs, max=") + String(maxTime) + 
-    //                          F("µs, msgs=") + String(messageCount));
+        baja::util::Debug::info(F("Network Timing: avg=") + String(avgTime, 1) + 
+                             F("µs, min=") + String(minTime) + 
+                             F("µs, max=") + String(maxTime) + 
+                             F("µs, msgs=") + String(messageCount));
         
-    //     if (sendErrors > 0) {
-    //         baja::util::Debug::warning(F("Network send errors: ") + String(sendErrors));
-    //     }
-    // }
+        if (sendErrors > 0) {
+            baja::util::Debug::warning(F("Network send errors: ") + String(sendErrors));
+        }
+    }
     
     // Log memory usage
     uint32_t freeRam = getFreeRAM();
@@ -402,31 +402,31 @@ void setup() {
     }
     
     // Initialize the network if ADC is working
-    // if (adcInitialized) {
-    //     baja::util::Debug::info(F("Initializing network..."));
-    //     baja::util::Debug::info(F("Server: ") + String(UDP_SERVER_ADDRESS) + F(":") + String(UDP_SERVER_PORT));
+    if (adcInitialized) {
+        baja::util::Debug::info(F("Initializing network..."));
+        baja::util::Debug::info(F("Server: ") + String(UDP_SERVER_ADDRESS) + F(":") + String(UDP_SERVER_PORT));
         
-    //     networkInitialized = baja::network::functions::initialize(
-    //         fastBuffer,
-    //         UDP_SERVER_ADDRESS,
-    //         UDP_SERVER_PORT
-    //     );
+        networkInitialized = baja::network::functions::initialize(
+            fastBuffer,
+            UDP_SERVER_ADDRESS,
+            UDP_SERVER_PORT
+        );
         
-    //     if (networkInitialized) {
-    //         baja::util::Debug::info(F("Network initialized successfully."));
+        if (networkInitialized) {
+            baja::util::Debug::info(F("Network initialized successfully."));
             
-    //         // Start network operations
-    //         baja::util::Debug::info(F("Starting network operations..."));
-    //         if (!baja::network::functions::start()) {
-    //             baja::util::Debug::error(F("Failed to start network operations!"));
-    //             networkInitialized = false;
-    //         } else {
-    //             baja::util::Debug::info(F("Network operations started successfully"));
-    //         }
-    //     } else {
-    //         baja::util::Debug::error(F("Network initialization failed!"));
-    //     }
-    // }
+            // Start network operations
+            baja::util::Debug::info(F("Starting network operations..."));
+            if (!baja::network::functions::start()) {
+                baja::util::Debug::error(F("Failed to start network operations!"));
+                networkInitialized = false;
+            } else {
+                baja::util::Debug::info(F("Network operations started successfully"));
+            }
+        } else {
+            baja::util::Debug::error(F("Network initialization failed!"));
+        }
+    }
 
     
 
@@ -455,11 +455,11 @@ void loop() {
     loopCount++;
 
     // Always process ADC data - highest priority
-    // if (adcInitialized && baja::adc::functions::processSample()) {
-    //     samplesProcessedTotal++;
-    // } else if (!baja::adc::functions::isRunning()) {
-    //     // baja::util::Debug::info(F("ADC not running"));
-    // }
+    if (adcInitialized && baja::adc::functions::processSample()) {
+        samplesProcessedTotal++;
+    } else if (!baja::adc::functions::isRunning()) {
+        // baja::util::Debug::info(F("ADC not running"));
+    }
     
     // Process digital inputs every cycle
     if (digitalInitialized && baja::digital::functions::isRunning()) {
@@ -495,8 +495,9 @@ void loop() {
     
     // Process network operations - only if enough samples are available
     // (This is already handled in PBUDPHandler::processAndSendBatch())
-    // if (networkInitialized && baja::network::functions::isRunning() && loopCount % 5 == 1) {
-    //     size_t sent = baja::network::functions::process();
+    if (networkInitialized && baja::network::functions::isRunning() && loopCount % 5 == 1) {
+        size_t sent = baja::network::functions::process();
+    }
     //     if (sent == (size_t)-1) {
     //         systemState = baja::led::SystemState::NO_CONNECTION;;
     //     }

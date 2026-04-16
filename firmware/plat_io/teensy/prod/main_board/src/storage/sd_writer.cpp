@@ -512,6 +512,10 @@ bool SDWriter::writeHeader() {
 
 bool SDWriter::writeSampleToRingBuf(const data::ChannelSample& sample) {
     // All channels are always enabled for writing in this simplified model
+
+    // Serial.print(sample.internalChannelId);
+    // Serial.print(": ");
+    // Serial.println(sample.rawValue);
     
     if (config::CUSTOM_STRING_CONVERSION_ROUTINE) {
         char buffer[256]; // Increased size to accommodate channel names

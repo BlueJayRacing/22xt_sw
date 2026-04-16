@@ -2,13 +2,11 @@ import os
 import glob
 import shutil
 
-Import("env")
-
 
 mylib_root = os.getcwd()
 generated_src_dir = os.path.join(mylib_root, 'src')
 generated_include_dir = os.path.join(mylib_root, 'include')
-protoc_generator = os.path.join(mylib_root, '..', '..', '..', '..', '..', 'common', 'nanopb', 'generator-bin', 'protoc')
+protoc_generator = os.path.join(mylib_root, '..', 'nanopb', 'generator-bin', 'protoc')
 
 if not os.path.exists(generated_src_dir):
     os.makedirs(generated_src_dir)
@@ -17,7 +15,7 @@ if not os.path.exists(generated_include_dir):
     os.makedirs(generated_include_dir)
 
 mylib_proto_dirs = [
-    os.path.join(mylib_root, '..', '..', '..', '..', '..', 'proto')
+    os.path.join(mylib_root, '..', 'proto')
 ]
 
 nanopb_options = [
@@ -51,7 +49,7 @@ for proto_file in proto_files:
     ]
     # print(f"{proto_file_basename} -> {generated_targets}")
     cmd = protoc_generator + " " + " ".join(nanopb_options) + " " + proto_file_basename
-    result = env.Execute(cmd)
+    result = os.system(cmd)
     if (result != 0):
         print(f"Error({result}) processing cmd: '{cmd}'")
         exit(1)
