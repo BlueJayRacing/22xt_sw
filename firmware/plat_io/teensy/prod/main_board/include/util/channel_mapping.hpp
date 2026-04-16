@@ -137,20 +137,20 @@
   * @param channelName The ChannelName enum value
   * @return true if the channel should be enabled by default, false otherwise
   */
- inline bool shouldChannelBeEnabled(ChannelName channelName) {
+ inline bool shouldADCChannelBeEnabled(ChannelName channelName) {
      // Enable all data channels by default, but not reference channels
      switch (channelName) {
          case ChannelName::GND:
-         case ChannelName::TWO_5_REF:
          case ChannelName::ESP_3V3:
          case ChannelName::SG1:
          case ChannelName::SG2:
              return false; // Reference channels disabled by default
-         case ChannelName::CHANNEL_6:
-         case ChannelName::CHANNEL_7:
-         case ChannelName::CHANNEL_8:
-         case ChannelName::CHANNEL_9:
-         case ChannelName::CHANNEL_10:
+         case ChannelName::LIN_POT_1_FL:
+         case ChannelName::LIN_POT_2_FR:
+         case ChannelName::LIN_POT_3_RL:
+         case ChannelName::LIN_POT_4_RR:
+         case ChannelName::STEERING_POT:
+         case ChannelName::TWO_5_REF:
              return true; // Data channels enabled by default
          default:
              return false;

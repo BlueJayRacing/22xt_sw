@@ -38,7 +38,7 @@ constexpr bool USE_HARD_CODED_ENCODING = true;  // Use hard-coded optimized enco
 
 // ADC settings
 constexpr double ADC_DEFAULT_GAIN = 1.0;          // Default gain for ADC channels
-constexpr bool ADC_ENABLE_ALL_CHANNELS = true;   // Enable all channels regardless of defaults
+constexpr bool ADC_ENABLE_ALL_CHANNELS = false;   // Enable all channels regardless of defaults
 
 } // namespace config
 } // namespace baja

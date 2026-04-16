@@ -455,11 +455,11 @@ void loop() {
     loopCount++;
 
     // Always process ADC data - highest priority
-    if (adcInitialized && baja::adc::functions::processSample()) {
-        samplesProcessedTotal++;
-    } else if (!baja::adc::functions::isRunning()) {
-        baja::util::Debug::info(F("ADC not running"));
-    }
+    // if (adcInitialized && baja::adc::functions::processSample()) {
+    //     samplesProcessedTotal++;
+    // } else if (!baja::adc::functions::isRunning()) {
+    //     // baja::util::Debug::info(F("ADC not running"));
+    // }
     
     // Process digital inputs every cycle
     if (digitalInitialized && baja::digital::functions::isRunning()) {
@@ -490,7 +490,7 @@ void loop() {
     if (sdCardInitialized && baja::storage::functions::isRunning() && loopCount % 5 == 0) {
         baja::storage::functions::process();
     } else if (!baja::storage::functions::isRunning()) {
-        baja::util::Debug::info(F("SD writing is not working"));
+        // baja::util::Debug::info(F("SD writing is not working"));
     }
     
     // Process network operations - only if enough samples are available

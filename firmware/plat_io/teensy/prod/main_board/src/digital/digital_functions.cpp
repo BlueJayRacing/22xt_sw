@@ -25,17 +25,18 @@ static const uint32_t SAMPLE_INTERVAL_MS = 10; // sample at least every 10 ms
 
 // Volatile counters for each digital input
 static volatile uint32_t digitalCounters_[DIGITAL_CHANNEL_COUNT] = {0};
+static volatile bool digital_prev[DIGITAL_CHANNEL_COUNT] = {false};
 
 // Flags indicating if a counter has been incremented since the last sampling
 static volatile bool digitalCounterIncremented_[DIGITAL_CHANNEL_COUNT] = {false};
 
 // Interrupt service routines for each digital input
-static void isr_d1() { digitalCounters_[0]++; digitalCounterIncremented_[0] = true; }
-static void isr_d2() { digitalCounters_[1]++; digitalCounterIncremented_[1] = true; }
-static void isr_d3() { digitalCounters_[2]++; digitalCounterIncremented_[2] = true; }
-static void isr_d4() { digitalCounters_[3]++; digitalCounterIncremented_[3] = true; }
-static void isr_d5() { digitalCounters_[4]++; digitalCounterIncremented_[4] = true; }
-static void isr_d6() { digitalCounters_[5]++; digitalCounterIncremented_[5] = true; }
+static void isr_d1() {digitalCounters_[0]++; digitalCounterIncremented_[0] = true; } // if (!digitalCounterIncremented_[0]) 
+static void isr_d2() {digitalCounters_[1]++; digitalCounterIncremented_[1] = true; } // if (!digitalCounterIncremented_[1]) 
+static void isr_d3() {digitalCounters_[2]++; digitalCounterIncremented_[2] = true; } // if (!digitalCounterIncremented_[2]) 
+static void isr_d4() {digitalCounters_[3]++; digitalCounterIncremented_[3] = true; } // if (!digitalCounterIncremented_[3]) 
+static void isr_d5() {digitalCounters_[4]++; digitalCounterIncremented_[4] = true; } // if (!digitalCounterIncremented_[4]) 
+static void isr_d6() {digitalCounters_[5]++; digitalCounterIncremented_[5] = true; } // if (!digitalCounterIncremented_[5]) 
 
 bool initialize(
     buffer::RingBuffer<data::ChannelSample, config::SAMPLE_RING_BUFFER_SIZE>& mainBuffer,
@@ -46,12 +47,20 @@ bool initialize(
     // Store the buffer references
     mainBuffer_ = &mainBuffer;
     fastBuffer_ = &fastBuffer;
-    
+
+    digital_pins[0] = D1_PIN;
+    digital_pins[1] = D2_PIN;
+    digital_pins[2] = D3_PIN;
+    digital_pins[3] = D4_PIN;
+    digital_pins[4] = D5_PIN;
+    digital_pins[5] = D6_PIN;
+
     // Initialize counters and flags
     for (int i = 0; i < DIGITAL_CHANNEL_COUNT; i++) {
         digitalCounters_[i] = 0;
         digitalCounterIncremented_[i] = false;
         lastSampleTimeMs_[i] = 0;
+        // digital_prev[i] = false;
     }
     
     // Configure pins as inputs
@@ -136,19 +145,30 @@ bool process() {
     for (int i = 0; i < DIGITAL_CHANNEL_COUNT; i++) {
         // Check if counter was incremented or if sampling interval has elapsed
         // We need to disable interrupts temporarily for reading the volatile flag
-        noInterrupts();
-        bool needsSampling = digitalCounterIncremented_[i] || 
-                            (currentTimeMs - lastSampleTimeMs_[i] >= SAMPLE_INTERVAL_MS);
-        
-        if (needsSampling) {
-            // Read the counter value
+        // noInterrupts();
+        // bool is_high = digitalRead(digital_pins[i]) == HIGH;
+        bool needSample = digitalCounterIncremented_[i] || (currentTimeMs - lastSampleTimeMs_[i] >= SAMPLE_INTERVAL_MS);
+
+        if (needSample) {
+            // // Read the counter value
+            // if(is_high && !digital_prev[i]) {
+            //     digitalCounters_[i]++;
+            // }
+
+            // digital_prev[i] = is_high;
+
+            // if (!(currentTimeMs - lastSampleTimeMs_[i] >= SAMPLE_INTERVAL_MS)) continue;
+
             uint32_t counterValue = digitalCounters_[i];
+            if (counterValue != 0) {
+                util::Debug::info(F("Got count: ") + String(counterValue) + F(" on channel: ") + String(i));
+            }
             
             // Reset the incremented flag
             digitalCounterIncremented_[i] = false;
             
             // Re-enable interrupts
-            interrupts();
+            // interrupts();
             
             // Update last sample time
             lastSampleTimeMs_[i] = currentTimeMs;

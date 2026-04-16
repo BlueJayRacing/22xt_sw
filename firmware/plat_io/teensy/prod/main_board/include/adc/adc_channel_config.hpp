@@ -69,7 +69,7 @@ inline bool initializeChannelConfigs(ChannelConfig* channelConfigs, bool enableA
         // util::Debug::info(channelConfigs[i].name);
         
         // Set enabled status based on channel type or configuration flag
-        channelConfigs[i].enabled = enableAllChannels ? true : util::shouldChannelBeEnabled(channelName);
+        channelConfigs[i].enabled = enableAllChannels ? true : util::shouldADCChannelBeEnabled(channelName);
     }
     
     util::Debug::info(F("Channel configurations initialized successfully"));

@@ -10,12 +10,14 @@ namespace baja {
 namespace digital {
 
 // Constants for the digital input pins
-constexpr uint8_t D1_PIN = 27;
-constexpr uint8_t D2_PIN = 26;
-constexpr uint8_t D3_PIN = 39;
-constexpr uint8_t D4_PIN = 38;
-constexpr uint8_t D5_PIN = 41;
-constexpr uint8_t D6_PIN = 40;
+constexpr uint8_t D1_PIN = 21;
+constexpr uint8_t D2_PIN = 20;
+constexpr uint8_t D3_PIN = 17;
+constexpr uint8_t D4_PIN = 16;
+constexpr uint8_t D5_PIN = 15;
+constexpr uint8_t D6_PIN = 14;
+
+static uint8_t digital_pins[6] = {0};
 
 // Number of digital channels
 constexpr uint8_t DIGITAL_CHANNEL_COUNT = 6;

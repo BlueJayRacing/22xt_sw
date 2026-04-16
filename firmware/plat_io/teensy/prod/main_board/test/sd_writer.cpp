@@ -250,6 +250,8 @@ size_t SDWriter::process() {
     
     for (size_t i = 0; i < samplesInBatch; i++) {
         if (dataBuffer_.read(sample)) {
+            if (sample.timestamp == 0)
+                util::Debug::info(F("data is fucked with 0"));
             if (writeSampleToRingBuf(sample)) {
                 samplesProcessed++;
             } else {

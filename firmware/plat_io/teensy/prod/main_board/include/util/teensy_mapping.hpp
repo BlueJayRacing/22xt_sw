@@ -9,6 +9,7 @@
  #include <string>
  #include <array>
  #include <unordered_map>
+ #include <util/channel_mapping.hpp>
  
  namespace baja {
  namespace util {
@@ -149,8 +150,9 @@
      
      // Specialized enabling logic for different channel types
      if (id <= 15) {
-        return true;
+        // return true;
          // ADC channels - enable all data channels but not reference channels
+         return shouldADCChannelBeEnabled(static_cast<ChannelName>(id));
          switch (id) {
              case 0: // Ground reference
              case 1: // 5V reference
