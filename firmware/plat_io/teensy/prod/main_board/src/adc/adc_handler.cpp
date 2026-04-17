@@ -131,8 +131,14 @@ bool ADC7175Handler::configureChannel(const ChannelConfig& config) {
         util::Debug::error("ADC: assignSetup failed with code " + String(result));
         return false;
     }
-    
-    // // Set the gain
+
+    result = adcDriver_.setReferenceSource(EXTERNAL_REF, config.setupIndex);
+    if (result < 0) {
+        util::Debug::error("ADC: set reference source failed with code " + String(result));
+        return false;
+    }
+
+    // Set the gain
     result = adcDriver_.setGain(config.gain, config.setupIndex);
     if (result < 0) {
         util::Debug::error("ADC: setGain failed with code " + String(result));
@@ -263,6 +269,8 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
     if(lastConversionTime_ == 0) {
         util::Debug::info(F("ts should never HAPPEN THIS IS A LONG LINE..............."));
     }
+
+    if (internalChannelId == 6) util::Debug::info(F("reading from adc channel: ") + String(internalChannelId) + F(" with value: ") + String(sample.value));
 
     data::ChannelSample channelSample(
         lastConversionTime_,// Microsecond timestamp

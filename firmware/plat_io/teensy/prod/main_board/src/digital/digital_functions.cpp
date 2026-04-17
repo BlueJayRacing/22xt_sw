@@ -31,12 +31,12 @@ static volatile bool digital_prev[DIGITAL_CHANNEL_COUNT] = {false};
 static volatile bool digitalCounterIncremented_[DIGITAL_CHANNEL_COUNT] = {false};
 
 // Interrupt service routines for each digital input
-static void isr_d1() {digitalCounters_[0]++; digitalCounterIncremented_[0] = true; } // if (!digitalCounterIncremented_[0]) 
-static void isr_d2() {digitalCounters_[1]++; digitalCounterIncremented_[1] = true; } // if (!digitalCounterIncremented_[1]) 
-static void isr_d3() {digitalCounters_[2]++; digitalCounterIncremented_[2] = true; } // if (!digitalCounterIncremented_[2]) 
-static void isr_d4() {digitalCounters_[3]++; digitalCounterIncremented_[3] = true; } // if (!digitalCounterIncremented_[3]) 
-static void isr_d5() {digitalCounters_[4]++; digitalCounterIncremented_[4] = true; } // if (!digitalCounterIncremented_[4]) 
-static void isr_d6() {digitalCounters_[5]++; digitalCounterIncremented_[5] = true; } // if (!digitalCounterIncremented_[5]) 
+FASTRUN static void isr_d1() {if (!digitalCounterIncremented_[0]) digitalCounters_[0]++; digitalCounterIncremented_[0] = true; } // if (!digitalCounterIncremented_[0]) 
+FASTRUN static void isr_d2() {if (!digitalCounterIncremented_[1]) digitalCounters_[1]++; digitalCounterIncremented_[1] = true; } // if (!digitalCounterIncremented_[1]) 
+FASTRUN static void isr_d3() {if (!digitalCounterIncremented_[2]) digitalCounters_[2]++; digitalCounterIncremented_[2] = true; } // if (!digitalCounterIncremented_[2]) 
+FASTRUN static void isr_d4() {if (!digitalCounterIncremented_[3]) digitalCounters_[3]++; digitalCounterIncremented_[3] = true; } // if (!digitalCounterIncremented_[3]) 
+FASTRUN static void isr_d5() {if (!digitalCounterIncremented_[4]) digitalCounters_[4]++; digitalCounterIncremented_[4] = true; } // if (!digitalCounterIncremented_[4]) 
+FASTRUN static void isr_d6() {if (!digitalCounterIncremented_[5]) digitalCounters_[5]++; digitalCounterIncremented_[5] = true; } // if (!digitalCounterIncremented_[5]) 
 
 bool initialize(
     buffer::RingBuffer<data::ChannelSample, config::SAMPLE_RING_BUFFER_SIZE>& mainBuffer,
@@ -60,7 +60,7 @@ bool initialize(
         digitalCounters_[i] = 0;
         digitalCounterIncremented_[i] = false;
         lastSampleTimeMs_[i] = 0;
-        // digital_prev[i] = false;
+        digital_prev[i] = false;
     }
     
     // Configure pins as inputs
@@ -129,6 +129,7 @@ bool isRunning() {
 bool process() {
     // Check if digital monitoring is running
     if (!running_ || !mainBuffer_ || !fastBuffer_) {
+        util::Debug::info("mem inssue in digital");
         return false;
     }
     
@@ -145,8 +146,11 @@ bool process() {
     for (int i = 0; i < DIGITAL_CHANNEL_COUNT; i++) {
         // Check if counter was incremented or if sampling interval has elapsed
         // We need to disable interrupts temporarily for reading the volatile flag
-        // noInterrupts();
+        noInterrupts();
         // bool is_high = digitalRead(digital_pins[i]) == HIGH;
+        // if (true || i == 0) {
+        //     util::Debug::info(F("Channel ") + String(i) + F(" is high: ") + String(is_high));
+        // }
         bool needSample = digitalCounterIncremented_[i] || (currentTimeMs - lastSampleTimeMs_[i] >= SAMPLE_INTERVAL_MS);
 
         if (needSample) {
@@ -168,7 +172,7 @@ bool process() {
             digitalCounterIncremented_[i] = false;
             
             // Re-enable interrupts
-            // interrupts();
+            interrupts();
             
             // Update last sample time
             lastSampleTimeMs_[i] = currentTimeMs;

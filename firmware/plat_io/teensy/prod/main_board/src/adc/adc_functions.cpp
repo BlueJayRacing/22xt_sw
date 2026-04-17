@@ -154,7 +154,7 @@ bool processSample() {
             );
             
             // Write to fast buffer with downsampling
-            if (false && fastBuffer_) {
+            if (fastBuffer_) {
                 if (internalChannelId < util::TOTAL_CHANNEL_COUNT) {
                     // Increment channel counter
                     channelSampleCounters_[internalChannelId]++;

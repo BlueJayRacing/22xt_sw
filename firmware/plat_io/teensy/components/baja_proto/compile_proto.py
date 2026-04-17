@@ -1,12 +1,19 @@
 import os
 import glob
 import shutil
+from sys import platform
 
 
 mylib_root = os.getcwd()
 generated_src_dir = os.path.join(mylib_root, 'src')
 generated_include_dir = os.path.join(mylib_root, 'include')
-protoc_generator = os.path.join(mylib_root, '..', 'nanopb', 'generator-bin', 'protoc')
+
+if platform == "darwin":
+    protoc_generator = os.path.join(mylib_root, '..', '..', '..', '..', 'common', 'nanopb', 'nanopb-mac', 'generator-bin', 'protoc')
+elif platform == "win32":
+    protoc_generator = os.path.join(mylib_root, '..', '..', '..', '..', 'common', 'nanopb', 'nanopb-windows', 'generator-bin', 'protoc')
+else:
+    protoc_generator = os.path.join(mylib_root, '..', '..', '..', '..', 'common', 'nanopb', 'nanopb-linux', 'generator-bin', 'protoc')
 
 if not os.path.exists(generated_src_dir):
     os.makedirs(generated_src_dir)

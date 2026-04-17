@@ -3,7 +3,7 @@ import glob
 import shutil
 import filecmp
 
-Import("env")
+from sys import platform
 
 mylib_root = os.getcwd()
 
@@ -34,7 +34,9 @@ def copy_folder_contents(src_root, dest_root, folder_names):
                 shutil.copy2(src_path, dest_path)
                 print(f"Copied '{src_path}' to '{dest_path}'")
 
-source_directory = os.path.join(mylib_root, '..', '..', '..', '..', '..', 'common', 'nanopb')
+
+source_directory = os.path.join(mylib_root, '..', '..', '..', '..', 'common', 'nanopb')
+
 destination_directory = mylib_root  # Change this to the actual destination root directory
 
 folders_to_copy = ["src", "include"]

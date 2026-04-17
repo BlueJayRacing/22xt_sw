@@ -180,7 +180,7 @@ if (currentMillis - lastPrintTime >= PRINT_INTERVAL_MS) {
     double averages[16];
     for (int i = 0; i < 16; i++) {
       if (tempCount[i] > 0) {
-        averages[i] = (static_cast<double>(tempSum[i]) / tempCount[i]);///16777216.0f * 5.0f;
+        averages[i] = (static_cast<double>(tempSum[i]) / tempCount[i])/16777216.0f * 5.0f;
       } else {
         averages[i] = 0.0;
       }
