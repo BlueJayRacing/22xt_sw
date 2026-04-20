@@ -72,6 +72,7 @@ class W25N04KV {
     esp_err_t readConfigRegister(w25n04kv_device_config_t* device_config);
     esp_err_t printConfigReg(void);
     esp_err_t printStatusReg(void);
+    esp_err_t writeConfigRegister(uint8_t byte);
 
   private:
     esp_err_t transfer(const uint8_t op_code, std::vector<uint8_t>& rx_data, const uint64_t address,

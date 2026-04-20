@@ -214,19 +214,18 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32
     return ESP_OK;
 }
 
-// void WSG_MEM::read_page(uint32_t page_addr)
-// {
-//     vTaskDelay(100);
-//     // wait_for_ready();
-//     std::array<uint8_t> rx_data(30);
-//     ESP_LOGI(TAG, "read page %u", page_addr);
-//     spi_flash_.readPage(rx_data, page_addr, 0);
-//     for (uint8_t i : rx_data) {
-//         std::string s = std::format("{:x}", i);
-//         ESP_LOGI(TAG, "Data in hex %s", s.c_str());
-//         // ESP_LOGI(TAG, "Hi: %u", i);
-//     }
-// }
+std::vector WSG_MEM::read_wsg_page(uint32_t page_addr)
+{
+    wait_for_ready();
+    std::vector<uint8_t> rx_data;
+    // ESP_LOGI(TAG, "read page %u", page_addr);
+    spi_flash_.readPage(rx_data, page_addr, 0);
+    std::vector<wsg_data> wsgs = interpret_read_data(rx_data);
+    return wsgs;
+}
+
+// TODO: consider only reading wsg data in chunks anyway
+
 // esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::array<uint8_t>& rx_data)
 // {
 
@@ -236,7 +235,7 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32
 //     ret = read_and_interpret_meta();
 //     vTaskDelay(80);
 
-//     for (uint32_t i = 1; i < page_addr + 1; i++) {
+//     for (uint32_t i = FIRST_PAGE; i < page_addr + 1; i++) {
 //         ret = spi_flash_.readPage(rx_data, i, column_addr);
 //         if (ret != ESP_OK) {
 //             ESP_LOGE(TAG, "failed. :(). Page number %lu, error %d", i, ret);
@@ -247,7 +246,7 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32
 //             ESP_LOGI(TAG, "Read data %d", rx_data[j]);
 //         }
 //         std::array<uint8_t> chunk(rx_data.begin(), rx_data.begin() + CHUNK_SIZE);
-//         std::array<wsg_data> wsgs = interpret_read_data(chunk);
+//         std::vector<wsg_data> wsgs = interpret_read_data(chunk);
 //         for (wsg_data w : wsgs) {
 //             ESP_LOGI(TAG, "Time: %llu", w.time);
 //             for (int j = 0; j < 3; j++) {
@@ -380,7 +379,7 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
         vTaskDelay(10);
     }
     ESP_LOGI(TAG, "Writing to page: %0x, column %0x", last_page, last_column);
-    if (((last_column + CHUNK_SIZE) >= 2047)) {
+    if (((last_column + CHUNK_SIZE) >= PAGE_SIZE)) {
         last_page++;
         last_column = 0;
         ESP_LOGI(TAG, "Incremented Page: %0x", last_page);

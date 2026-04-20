@@ -32,8 +32,39 @@ void test_meta()
     assert(wsg_mem.dac_bias == 32);
 }
 
+// TODO: expand test to test multiples pages;
 void test_write_data() {
+    std::vector<uint16_t> strain_data = {1, 2, 3};
+
+    wsg_mem.nuke();
+
+    esp_err_t err;
+    int items_written = 0;
     
+    for(int i = 0; i < PAGE_SIZE / sizeof(wsg_data)) {
+        err = wsg_mem.indiv_write(i, strain_data);
+
+        items_written++;
+        
+        // increment wsg data
+        for(int j = 0; j < 3; j++)
+            strain_data[j]++;
+
+        ASSERT(err == ESP_OK);
+    }
+
+    ESP_LOGI("test_write_data", "Wrote %d items to flash", items_written);
+
+    for (int k = 0)
+
+    std::vector<wsg_data> wsgs = wsg_mem.read_wsg_page(1);
+    for(int i = 0; i < wsgs.length(); i++) {
+        // check that timestamp is correct
+        ASSERT(wsgs[i].time == i);
+
+        // check that data is correct
+    }
+
 }
 // void test_write_column(WSG_MEM& w)
 // {
@@ -95,4 +126,5 @@ extern "C" void app_main(void)
     wsg_mem.init(flash_params);
     wsg_mem.nuke();
     test_meta();
+    test_write_data();
 }

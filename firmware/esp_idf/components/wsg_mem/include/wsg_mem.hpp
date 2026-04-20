@@ -14,10 +14,12 @@
 #define METADATA_SIZE         9 // 6 for page/column + 1 for id + 2 for dac bias
 #define META_PAGE             0
 #define FIRST_PAGE            1
-struct wsg_data {
+#define PAGE_SIZE 2047
+
+typedef struct {
     uint64_t time;
     std::array<uint16_t, 3> wsgs;
-};
+} wsg_data;
 
 class WSG_MEM {
   public:
@@ -34,7 +36,7 @@ class WSG_MEM {
     esp_err_t cont_write(std::vector<uint16_t>& wsg_data);
     esp_err_t init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_);
     esp_err_t read_meta(std::vector<uint8_t>& rx_data);
-    void read_page(uint32_t page_addr);
+    std::vector<wsg_data> read_wsg_page(uint32_t page_addr);
     void nuke();
     esp_err_t set_dac_bias(uint16_t dac_bias);
     esp_err_t set_wsg_id(uint8_t id);

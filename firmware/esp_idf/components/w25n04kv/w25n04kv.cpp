@@ -68,6 +68,7 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
 
     vTaskDelay(5);
 
+    ret = writeConfigRegister(0b00011000);
     ESP_LOGI(TAG, "Initialized W25N04KV Device");
 
     return ESP_OK;
@@ -139,6 +140,13 @@ esp_err_t W25N04KV::disableWriteProtection(void)
     std::vector<uint8_t> dummy_rx;
     return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0xA0, 8, 0, tx_data);
 };
+
+esp_err_t W25N04KV::writeConfigRegister(uint8_t byte) {
+    std::vector<uint8_t> tx_data = {byte};
+    std::vector<uint8_t> dummy_rx;
+
+    return transfer(W25N04KV_OP_CODE_WRITE_STAT_REG, dummy_rx, 0xB0, 8, 0, tx_data);
+}
 
 esp_err_t W25N04KV::eraseBlock(const uint64_t block_address)
 {
@@ -228,7 +236,7 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Value of read status register: %d", (uint8_t)rx_data[0]);
+    ESP_LOGI(TAG, "Value of read status register: %02x", (uint8_t)rx_data[0]);
 
     device_status->ecc_status      = w25n04kv_ecc_status_t((rx_data[0] >> 4) & 0x03);
     device_status->program_failure = rx_data[0] & 0x08;
