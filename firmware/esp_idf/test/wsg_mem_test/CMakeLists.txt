@@ -4,8 +4,8 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
-set(EXTRA_COMPONENT_DIRS    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/ad5626
-                            )
+
+set(EXTRA_COMPONENT_DIRS    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/wsg_mem ${CMAKE_CURRENT_SOURCE_DIR}/../../components/w25n04kv)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(ad5626_test)
+project(wsg_mem_test)
