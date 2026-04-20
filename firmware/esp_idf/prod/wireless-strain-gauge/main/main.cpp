@@ -10,7 +10,9 @@
 #include <vector>
 #include <wsg_mem.hpp>
 
-#define DATA_READ_ONLY true
+// #define DATA_READ_ONLY true
+// #define FLASH_MEM true
+#define USE_UDP true
 
 static const char* TAG                           = "main";
 static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1,
@@ -63,6 +65,7 @@ extern "C" void app_main(void) {
     }
 
 #ifndef DATA_READ_ONLY
+#ifdef FLASH_MEM
     w25n04kv_init_param_t flash_params = {
         .cs_pin = GPIO_NUM_41,
         .wp_pin = GPIO_NUM_NC,
@@ -73,8 +76,7 @@ extern "C" void app_main(void) {
 
     // start data queue for flash
     flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
-
-    ESP_LOGI(TAG, "Waiting for go signal");
+#endif
 
     // connect to wifi
     err = client.initialize_wifi_connection();
@@ -87,40 +89,47 @@ extern "C" void app_main(void) {
         ESP_LOGW(TAG, "failed to initialize udp socket");
     }
 
-    Message * msg;
-    msg = client.recv_data();
-    while (msg == nullptr) {
-        msg = client.recv_data();
-    }
+    // ESP_LOGI(TAG, "Waiting for go signal");
+    // Message * msg = nullptr;
+    // std::array<uint8_t, MESSAGE_MAX_LEN> tx_data = {0};
+    // // later change this to actual wsg id
+    // tx_data[0] = {0x01};
 
-    sync();
+    // while (msg == nullptr) {
+    //     // error check here
+    //     err = client.publish_data(0, tx_data, 1);
+    //     msg = client.recv_data();
+    // }
+
+    // sync();
     ESP_LOGI(TAG, "Finished sync");
+    // if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
+    //     free(msg);
 
-    if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
-        free(msg);
-
+#ifdef FLASH_MEM
         // start tasks
         xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 2, &write_handle, (UBaseType_t)0);
 #endif
+#endif
 
         xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 1, &data_read_handle, (UBaseType_t)1);
-#ifndef DATA_READ_ONLY
-    } else if (msg->payload_len <= 2 && msg->payload[0] == 0x04) {
-        // start calibration task
-        if (msg->payload_len == 2) {
-            wsg_mem.set_wsg_id(msg->payload[1]);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Error setting the id (%d) in flash: %s", msg->payload[1], esp_err_to_name(err));
-            }
-        }
+// #ifndef DATA_READ_ONLY
+//     } else if (msg->payload_len <= 2 && msg->payload[0] == 0x04) {
+//         // start calibration task
+//         if (msg->payload_len == 2) {
+//             wsg_mem.set_wsg_id(msg->payload[1]);
+//             if (err != ESP_OK) {
+//                 ESP_LOGE(TAG, "Error setting the id (%d) in flash: %s", msg->payload[1], esp_err_to_name(err));
+//             }
+//         }
 
-        free(msg);
+//         free(msg);
 
-        xTaskCreate(vTaskCalibrate, "calibration thread", (1<<16), NULL, 1, NULL);
-    } else {
-        ESP_LOGE(TAG, "Failed to boot due to incorrect spi instruction: %d, payload len: %d", msg->payload[0], msg->payload_len);
-    }
-#endif
+//         xTaskCreate(vTaskCalibrate, "calibration thread", (1<<16), NULL, 1, NULL);
+//     } else {
+//         ESP_LOGE(TAG, "Failed to boot due to incorrect spi instruction: %d, payload len: %d", msg->payload[0], msg->payload_len);
+//     }
+// #endif
 
     vTaskDelete(NULL);
 }
@@ -136,10 +145,12 @@ void vTaskCalibrate(void * pvParameter) {
         vTaskDelete( NULL );
     }
 
+#ifdef FLASH_MEM
     err = wsg_mem.set_dac_bias(new_dac_bias);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error setting the dac bias in flash: %s", esp_err_to_name(err));
     }
+#endif
 
     xTaskCreate(vTaskDataProcessing, "calibration data sending", (1<<16), NULL, 2, NULL);
     vTaskDelete( NULL );
@@ -152,15 +163,14 @@ void vTaskDataProcessing(void* pvParameter)
     driveSensorSetup sensors;
     sensors.init(ads1120_params, ad5626_params);
 
-#ifndef DATA_READ_ONLY
+#ifdef FLASH_MEM 
     sensors.setDACValue(wsg_mem.dac_bias);
 #else
-    sensors.setDACValue(0);
+    sensors.setDACValue(40000);
 #endif
 
     int array_ct = 0;
     std::array<wsg_data_t, 6> udp_data_buf;
-
     wsg_data_t* sample;
     drive_measurement_t measure;
 
@@ -181,11 +191,12 @@ void vTaskDataProcessing(void* pvParameter)
             vTaskDelay(pdMS_TO_TICKS(10));
             sensors.measure(false, &measure);
 
-            sample->sample[i] = measure.adc_value;
+            // sample->sample[i] = measure.adc_value;
             ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
         }
 
 #ifndef DATA_READ_ONLY
+#ifdef FLASH_MEM
         if (xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
             delete sample;
             ESP_LOGW(TAG, "failed to add sample to flash mem queue");
@@ -195,18 +206,20 @@ void vTaskDataProcessing(void* pvParameter)
             // Notify the writer to do the writing
             xTaskNotifyGiveIndexed(write_handle, sem_val);
         }
+#endif
 
         // Pass data to the mainboard
-        memcpy(&udp_data_buf + array_ct, sample, sizeof(wsg_data_t));
+        udp_data_buf[array_ct] = *sample;
         array_ct++;
 
         if (array_ct == 6) {
             serialize_msg_and_publish(udp_data_buf);
             array_ct = 0;
         }
-#else
-        delete sample;
 #endif
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        delete sample;
+        // esp_task_wdt_reset();
     }
 }
 
@@ -220,16 +233,19 @@ void vTaskFlashWrite(void* pvParameter)
             continue;
         }
 
-        wsg_data_t* sample = new wsg_data_t();
+        wsg_data_t* sample = nullptr;
 
         while (xQueueReceive(flash_mem_q, sample, 10) == pdPASS) {
             // put stuff in write format
-            std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
-            wsg_mem.indiv_write(sample->timestamp, buf);
-            delete sample;
+            if (sample != nullptr) {
+                std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
+                wsg_mem.indiv_write(sample->timestamp, buf);
+            }
         }
 
         xTaskNotifyGiveIndexed(data_read_handle, sem_val);
+        // esp_task_wdt_reset();
+        taskYIELD();
     }
 }
 

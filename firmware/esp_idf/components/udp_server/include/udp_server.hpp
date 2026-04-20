@@ -55,6 +55,7 @@ class UdpServer {
         // void udpSenderWorker();
         static void udp_send_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
         void udp_recv_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* event_data);
+        void clear_recv_queue(void);
 
     private:
         esp_err_t ensure_wifi_connection(int max_attempts);

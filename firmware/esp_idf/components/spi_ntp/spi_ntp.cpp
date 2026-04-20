@@ -92,7 +92,7 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host) {
     slave_config.mode = 0;
     slave_config.post_setup_cb = &recv_time;
 
-    esp_err_t err = spi_slave_initialize(SPI_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
+    esp_err_t err = spi_slave_initialize(SPI2_HOST, &settings, &slave_config, SPI_DMA_DISABLED);
     switch(err) {
         case ESP_OK:
             ESP_LOGI(TAG, "Initialized spi slave interface");

@@ -29,6 +29,14 @@ UdpServer::~UdpServer() {
     esp_event_loop_delete(sender_loop_handle);
 }
 
+void UdpServer::clear_recv_queue(void) {
+    Message * msg = nullptr;
+    while(true) {
+        msg = recv_data();
+        if (msg == nullptr) delete msg;
+    }
+}
+
 static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     switch (event_id)
@@ -192,10 +200,9 @@ void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
 }
 
 Message * UdpServer::recv_data() {
-    ESP_LOGI(TAG, "requested message");
-    Message * msg = new Message();
+    Message * msg = nullptr;
     if (xQueueReceive(recv_queue, &msg, 10) == pdPASS) {
-        ESP_LOGI(TAG, "returned message");
+        // ESP_LOGI(TAG, "returned message");
         return msg;
     }
 
@@ -217,7 +224,7 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
 
         while (1) {
             vTaskDelay(10);
-            ESP_LOGI(TAG, "Starting to recv message");
+            // ESP_LOGI(TAG, "Starting to recv message");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
             int len = server->socket_handler_.srecv(msg);
@@ -226,7 +233,7 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
                 continue;
             }
 
-            ESP_LOGI(TAG, "adding message to q");
+            // ESP_LOGI(TAG, "adding message to q");
             // memcpy(msg->buf, buf, sizeof(buf));
             msg->timestamp = get_timestamp();
             msg->payload_len = len;

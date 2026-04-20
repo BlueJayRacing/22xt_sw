@@ -89,7 +89,7 @@ int SocketHandler::srecv(Message * msg) {
 
     int len = recvfrom(sock, msg->payload.data(), msg->payload.size(), 0, (struct sockaddr *)&source_addr, &size);
     if (len < 0) {
-        ESP_LOGI(TAG, "Received nothing from socket");
+        // ESP_LOGI(TAG, "Received nothing from socket");
         return -1;            
     }
 

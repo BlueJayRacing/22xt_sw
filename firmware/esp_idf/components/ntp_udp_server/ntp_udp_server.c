@@ -168,6 +168,7 @@ void init_server_wifi()
 
 void start_server_timesync_loop(void)
 {
+    // udp_server_task((void *) AF_INET);
     xTaskCreate(udp_server_task, "udp_server", 4096, (void*)AF_INET, 5, NULL);
     return;
 }

@@ -15,6 +15,8 @@ Description: A block to control the main board
 #include <stdio.h>
 #include <udp_server.hpp>
 
+#define NO_TEENSY true
+
 // Goals:
 // teensy sends "opcodes" to the esp to run arbrirary functions (this gives the option to extend what the esp can do)
 // When sent a "start reading" command from the teensy, open the server to the wsgs and read from them.
@@ -30,16 +32,19 @@ void startup(void)
 {
     // Choose spi host
     spi_host_device_t spi_host = SPI2_HOST; // 2 instead of 1 bc on website says we should generally use not 1
+    esp_err_t err;
 
+#ifndef NO_TEENSY
     // Time sync with the teensy
     // SPI also gets initialized via this
     NTPviaSPI spi_sync = NTPviaSPI(spi_host);
-    esp_err_t err      = spi_sync.sync();
+    err      = spi_sync.sync();
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "Sync completed succesfully");
     } else {
         ESP_LOGE(TAG, "Failed to sync: %d", err);
     }
+#endif
 
     // start transmission loop for teensy to call functions
     err = functional_loop(spi_host);
@@ -57,6 +62,8 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
     esp_err_t err  = ESP_OK;
     bool run_while = true;
     while (run_while) {
+
+#ifndef NO_TEENSY
         std::array<uint8_t, 1> dummy_buf = {0};
         std::array<uint8_t, 1> rx_buf_opcode;
         spi_slave_transaction_t teensy_optrans;
@@ -96,7 +103,13 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
         }
     }
     return err;
-} // end functional loop
+#else
+        wsg_read_pass(spi_host, 1);
+        // esp_task_wdt_reset();
+    }
+    return ESP_OK;
+#endif
+}
 
 // Read data from the wsgs and pass it to the teensy through spi
 // also does time sync with wsgs
@@ -114,8 +127,40 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         return err;
     }
 
+    // // check that esp is up
+    // Message * msg = nullptr;
+    // bool wsg1, wsg2 = false;
+    // struct sockaddr_in wsg1_send, wsg_2_send;
+    // wsg2 = true;
+    
+    // std::array<uint8_t, MESSAGE_MAX_LEN> tx_data;
+    // tx_data[0] = 0x08;
+    
+    // do {
+    //     msg = server.recv_data();
+    //     if (msg != nullptr) {
+    //         if (msg->payload_len == 1) {
+    //             if (msg->payload[0] == 0x01) {
+    //                 wsg1 = true;
+    //                 wsg1_send = msg->addr;
+    //             }// else if (msg->payload[0] == 0x02) {
+    //             //     wsg2 = true;
+    //             //     wsg2_send = msg->addr;
+    //             // }
+    //         }
+
+    //         free(msg);
+    //     }
+
+    // } while (wsg1 && wsg2);
+
+    // server.clear_recv_queue();
+
+    // server.publish_data(0, tx_data, 1, wsg1_send);
+    // // server.publish_data(0, tx_data, 1, wsg2_send);
+
     // TODO: Make sure this actually works like we think it does
-    start_server_timesync_loop(); //?is this correct?
+    // start_server_timesync_loop(); //?is this correct?
     // I believe so because wifi already initialized so now all it (should) have to do is start the loop
 
     // Start reading and passing from the wsgs
@@ -125,12 +170,14 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         // "Read" from the udp
         const Message* msg = server.recv_data();
         if (msg == nullptr) {
+            vTaskDelay(5);
             continue;
         }
 
         // "pass" onto the teensy
         // data is already serialized when recieved so we don't need to serialize again
 
+#ifndef NO_TEENSY
         std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
         spi_slave_transaction_t wsg_trans   = {0};
         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
@@ -147,6 +194,10 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         if (rx_buf[0] == 0xFF) { // Stop signal from the teensy
             break;
         }
+#else
+        ESP_LOGI(TAG, "Received data from wsg (%d): %s", msg->payload_len, msg->payload.data());
+#endif
+        delete msg;
     }
     return err;
 } // end wsg_read_pass
