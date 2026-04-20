@@ -17,7 +17,6 @@ else:
 
 if not os.path.exists(generated_src_dir):
     os.makedirs(generated_src_dir)
-
 if not os.path.exists(generated_include_dir):
     os.makedirs(generated_include_dir)
 
