@@ -10,6 +10,8 @@ static const char* TAG = "main";
 extern "C" void app_main(void)
 {
     Test test(ESP_LOG_DEBUG);
+    while (true) {
 
-    test.testAD5626();
+        test.testAD5626();
+    }
 }
