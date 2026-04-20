@@ -1,0 +1,19 @@
+{
+    "name": "recv_wsg_data",
+    "version": "1.0.0",
+    "description": "driver for ntp over spi",
+    "authors":
+    [
+      {
+        "name": "Cyan Brown",
+        "email": "cyanbrown29@gmail.com",
+        "maintainer": true
+      }
+    ],
+    "license": "MIT",
+    "dependencies": {
+      "SPI": "~1.0"
+    },
+    "frameworks": "*",
+    "platforms": "*"
+  }

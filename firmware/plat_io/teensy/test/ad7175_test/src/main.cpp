@@ -3,8 +3,8 @@
 #include "ad717x.hpp"
 
 // Pin definitions
-#define ADC_DRDY_PIN       24    // Dedicated DRDY input (buffered from ADC's DRDY/MISO pin)
-#define ADC_CS_PIN         10    // Chip Select for ADC
+#define ADC_DRDY_PIN       12    // Dedicated DRDY input (buffered from ADC's DRDY/MISO pin)
+#define ADC_CS_PIN         37    // Chip Select for ADC
 #define PRINT_INTERVAL_MS  300   // 300 ms averaging period
 
 // Global ADC driver instance and initialization parameters
@@ -124,7 +124,7 @@ void setup() {
 
 
   // Attach an interrupt to the dedicated DRDY pin (FALLING edge triggers when conversion is complete).
-  attachInterrupt(digitalPinToInterrupt(ADC_DRDY_PIN), drdyISR, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(ADC_DRDY_PIN), drdyISR, FALLING);
 
   lastPrintTime = millis();
 
@@ -137,7 +137,7 @@ void loop() {
   // Process ADC conversion results whenever the interrupt flag is set.
   if (dataReadyFlag) {
     noInterrupts();
-    dataReadyFlag = false;
+    // dataReadyFlag = false;
     interrupts();
 
     adcDriver.waitForReady(0);
@@ -196,7 +196,7 @@ if (currentMillis - lastPrintTime >= PRINT_INTERVAL_MS) {
 
     // Print each channel in a fixed-width field
     for (int i = 0; i < 16; i++) {
-      sprintf(buffer, ",%10.2f\t", averages[i]);
+      sprintf(buffer, ",  %10.2f", averages[i]);
       Serial.print(buffer);
     }
     Serial.println();
