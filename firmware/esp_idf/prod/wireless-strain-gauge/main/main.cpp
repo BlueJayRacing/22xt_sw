@@ -101,7 +101,8 @@ extern "C" void app_main(void) {
     //     msg = client.recv_data();
     // }
 
-    // sync();
+    sync();
+    taskYIELD();
     ESP_LOGI(TAG, "Finished sync");
     // if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
     //     free(msg);

@@ -31,7 +31,7 @@
 #include "nvs_flash.h"
 #include "ping/ping_sock.h"
 
-#define PORT 3333
+#define PORT 2222
 static const char* TAG = "UDP SOCKET SERVER";
 
 static void udp_server_task(void* pvParameters)
@@ -108,6 +108,7 @@ static void udp_server_task(void* pvParameters)
                 gettimeofday(&sent_time, NULL);
                 ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t)sent_time.tv_sec,
                          (int64_t)sent_time.tv_usec);
+                taskYIELD();
             } else {
                 ESP_LOGI(TAG, "Did not received data");
             }
@@ -169,6 +170,6 @@ void init_server_wifi()
 void start_server_timesync_loop(void)
 {
     // udp_server_task((void *) AF_INET);
-    xTaskCreate(udp_server_task, "udp_server", 4096, (void*)AF_INET, 5, NULL);
+    xTaskCreate(udp_server_task, "udp_server", 4096, (void*)AF_INET, 1, NULL);
     return;
 }

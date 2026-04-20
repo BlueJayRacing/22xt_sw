@@ -55,7 +55,9 @@ void test_write_data() {
 
     ESP_LOGI("test_write_data", "Wrote %d items to flash", items_written);
 
-    for (int k = 0)
+    for (int k = 0; k < 3; k++) {
+        strain_data[k] = k + 1;
+    }
 
     std::vector<wsg_data> wsgs = wsg_mem.read_wsg_page(1);
     for(int i = 0; i < wsgs.length(); i++) {
@@ -63,6 +65,7 @@ void test_write_data() {
         ASSERT(wsgs[i].time == i);
 
         // check that data is correct
+        ASSERT(strain_data == wsgs.wsgs);
     }
 
 }

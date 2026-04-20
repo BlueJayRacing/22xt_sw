@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include "component_template.hpp"
+// #include "component_template.hpp"
 
 #include "ad5689r.hpp"
 

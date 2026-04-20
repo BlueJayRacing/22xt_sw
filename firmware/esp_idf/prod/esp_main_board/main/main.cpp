@@ -160,7 +160,8 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
     // // server.publish_data(0, tx_data, 1, wsg2_send);
 
     // TODO: Make sure this actually works like we think it does
-    // start_server_timesync_loop(); //?is this correct?
+    start_server_timesync_loop();
+    taskYIELD();
     // I believe so because wifi already initialized so now all it (should) have to do is start the loop
 
     // Start reading and passing from the wsgs
@@ -170,7 +171,7 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         // "Read" from the udp
         const Message* msg = server.recv_data();
         if (msg == nullptr) {
-            vTaskDelay(5);
+            vTaskDelay(10);
             continue;
         }
 

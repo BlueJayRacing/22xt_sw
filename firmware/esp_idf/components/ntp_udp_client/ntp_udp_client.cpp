@@ -29,7 +29,7 @@
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
 
-#define PORT 3333
+#define PORT 2222
 #define HOST_IP_ADDR "192.168.4.1"
 #define US_PER_SECOND 1000000
 static const char *TAG = "UDP SOCKET CLIENT";
@@ -197,7 +197,7 @@ static void udp_client_task(void *pvParameters)
             ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
             ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t) cur_time.tv_sec, (int64_t) cur_time.tv_usec);
 
-            return;
+            taskYIELD();
 
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
@@ -265,7 +265,7 @@ void init_client_wifi(void)
 
 // will there be problems with no pin to core
 void start_client_timesync_loop() {    
-    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 1, NULL);
 }
  
 void sync() {
