@@ -40,8 +40,7 @@ NTPviaSPI::NTPviaSPI(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin
     digitalWrite(cs_pin, HIGH);
 }
 
-NTPviaSPI::NTPviaSPI(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_)
-    : spi_host(spi_host_), cs_pin(cs_pin_), handshake_pin(handshake_pin_), spi_settings(settings_)
+NTPviaSPI::NTPviaSPI(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_) : spi_host(spi_host_), cs_pin(cs_pin_), handshake_pin(handshake_pin_), spi_settings(settings_)
 {
     pinMode(cs_pin, OUTPUT);
     pinMode(handshake_pin, INPUT); 

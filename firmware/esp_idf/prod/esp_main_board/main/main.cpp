@@ -15,7 +15,9 @@ Description: A block to control the main board
 #include <stdio.h>
 #include <udp_server.hpp>
 
-#define NO_TEENSY true
+// #define NO_TEENSY true
+
+gpio_num_t handshake_pin = GPIO_NUM_3;
 
 // Goals:
 // teensy sends "opcodes" to the esp to run arbrirary functions (this gives the option to extend what the esp can do)
@@ -74,6 +76,8 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
         teensy_optrans.rx_buffer                 = rx_buf_opcode.data(); // storing an 8-bit opcode
         teensy_optrans.user                      = NULL;
 
+        ESP_LOGI(TAG, "check 1");
+
         // Get the opcode from the teensy
         err = spi_slave_transmit(spi_host, pteensy_optrans, portMAX_DELAY);
         if (err == ESP_OK) {
@@ -81,6 +85,8 @@ esp_err_t functional_loop(spi_host_device_t spi_host)
         } else {
             ESP_LOGE(TAG, "Failed SPI: %d", err);
         }
+
+        ESP_LOGI(TAG, "check 2");
 
         // switch based on the opcode to call some function
         switch (rx_buf_opcode[0]) {
@@ -127,78 +133,92 @@ esp_err_t wsg_read_pass(spi_host_device_t spi_host, uint8_t num_wsg)
         return err;
     }
 
-    // // check that esp is up
-    // Message * msg = nullptr;
-    // bool wsg1, wsg2 = false;
-    // struct sockaddr_in wsg1_send, wsg_2_send;
-    // wsg2 = true;
-    
-    // std::array<uint8_t, MESSAGE_MAX_LEN> tx_data;
-    // tx_data[0] = 0x08;
-    
-    // do {
-    //     msg = server.recv_data();
-    //     if (msg != nullptr) {
-    //         if (msg->payload_len == 1) {
-    //             if (msg->payload[0] == 0x01) {
-    //                 wsg1 = true;
-    //                 wsg1_send = msg->addr;
-    //             }// else if (msg->payload[0] == 0x02) {
-    //             //     wsg2 = true;
-    //             //     wsg2_send = msg->addr;
-    //             // }
-    //         }
+    gpio_set_direction(handshake_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(handshake_pin, 0);
 
-    //         free(msg);
-    //     }
-
-    // } while (wsg1 && wsg2);
-
-    // server.clear_recv_queue();
-
-    // server.publish_data(0, tx_data, 1, wsg1_send);
-    // // server.publish_data(0, tx_data, 1, wsg2_send);
-
-    // TODO: Make sure this actually works like we think it does
     start_server_timesync_loop();
     taskYIELD();
-    // I believe so because wifi already initialized so now all it (should) have to do is start the loop
 
-    // Start reading and passing from the wsgs
     ESP_LOGI(TAG, "Starting communication with wsg and teensy");
-    while (1) {
 
-        // "Read" from the udp
-        const Message* msg = server.recv_data();
-        if (msg == nullptr) {
-            vTaskDelay(10);
-            continue;
-        }
+    // std::array<uint8_t, 8> test_payload = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    // std::array<uint8_t, 8> rx_buf = {0};
 
-        // "pass" onto the teensy
-        // data is already serialized when recieved so we don't need to serialize again
+    WORD_ALIGNED_ATTR std::array<char*, 3> sendbuf;
+    WORD_ALIGNED_ATTR std::array<char*, 3> recvbuf;
 
-#ifndef NO_TEENSY
-        std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
-        spi_slave_transaction_t wsg_trans   = {0};
-        spi_slave_transaction_t* pwsg_trans = &wsg_trans;
-        wsg_trans.flags                     = 0;
-        wsg_trans.length                    = msg->payload_len << 3;
-        wsg_trans.tx_buffer                 = &(msg->payload[0]); // Storing the wsg_datas
-        wsg_trans.rx_buffer = rx_buf.data(); // Stores any signals from the teensy, e.g. 0xFF stop signal.
-        wsg_trans.user      = NULL;
+    for (int i = 0; i < 3; i++) {
+        sendbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 8, 0));
+        recvbuf[i] = static_cast<char*>(spi_bus_dma_memory_alloc(SPI2_HOST, 8, 0));
 
-        err = spi_slave_transmit(spi_host, pwsg_trans, portMAX_DELAY); // Transmit the wsg to the teensy
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed WSG pass: %d", err);
-        }
-        if (rx_buf[0] == 0xFF) { // Stop signal from the teensy
-            break;
-        }
-#else
-        ESP_LOGI(TAG, "Received data from wsg (%d): %s", msg->payload_len, msg->payload.data());
-#endif
-        delete msg;
+        assert(sendbuf[i] != nullptr);
+        assert(recvbuf[i] != nullptr);
+
+        memset(sendbuf[i], 0, 8);
+        memset(recvbuf[i], 0, 8);
     }
+
+    sendbuf[0][0] = 0x01; sendbuf[0][1] = 0x02; sendbuf[0][2] = 0x03; sendbuf[0][3] = 0x04;
+    sendbuf[0][4] = 0x05; sendbuf[0][5] = 0x06; sendbuf[0][6] = 0x07; sendbuf[0][7] = 0x08;
+
+    while (1) {
+        spi_slave_transaction_t wsg_trans = {};
+        wsg_trans.length = 8 << 3;
+        wsg_trans.tx_buffer = sendbuf[0];
+        wsg_trans.rx_buffer = recvbuf[0];
+
+        spi_slave_queue_trans(spi_host, &wsg_trans, portMAX_DELAY);
+
+        gpio_set_level(handshake_pin, 1);
+        ESP_LOGI(TAG, "Handshake HIGH - waiting for Teensy");
+
+        spi_slave_transaction_t* result;
+        spi_slave_get_trans_result(spi_host, &result, portMAX_DELAY);
+
+        gpio_set_level(handshake_pin, 0);
+        ESP_LOGI(TAG, "Sent data to Teensy");
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     return err;
+
+// #ifndef NO_TEENSY
+//         std::array<uint8_t, MESSAGE_MAX_LEN> rx_buf;
+//         spi_slave_transaction_t wsg_trans   = {0};
+//         spi_slave_transaction_t* pwsg_trans = &wsg_trans;
+//         wsg_trans.flags                     = 0;
+//         wsg_trans.length                    = msg->payload_len << 3;
+//         wsg_trans.tx_buffer                 = &(msg->payload[0]); // Storing the wsg_datas
+//         wsg_trans.rx_buffer = rx_buf.data(); // Stores any signals from the teensy, e.g. 0xFF stop signal.
+//         wsg_trans.user      = NULL;
+
+//         err = spi_slave_transmit(spi_host, pwsg_trans, portMAX_DELAY); // Transmit the wsg to the teensy
+//         if (err != ESP_OK) {
+//             ESP_LOGE(TAG, "Failed WSG pass: %d", err);
+//         }
+//         if (rx_buf[0] == 0xFF) { // Stop signal from the teensy
+//             break;
+//         }
+
+//         gpio_set_level(handshake_pin, 1);
+//         ESP_LOGI(TAG, "Handshake HIGH - waiting for Teensy");
+
+//         spi_slave_transaction_t* result;
+//         err = spi_slave_get_trans_result(spi_host, &result, portMAX_DELAY);
+//         gpio_set_level(handshake_pin, 0);  // lower handshake after transfer
+
+//         if (err != ESP_OK) {
+//             ESP_LOGE(TAG, "Failed WSG pass: %d", err);
+//         }
+//         if (rx_buf[0] == 0xFF) {  // Stop signal from Teensy
+//             delete msg;
+//             break;
+//         }
+// #else
+//         ESP_LOGI(TAG, "Received data from wsg (%d): %s", msg->payload_len, msg->payload.data());
+// #endif
+//         delete msg;
+//     }
+//     return err;
 } // end wsg_read_pass

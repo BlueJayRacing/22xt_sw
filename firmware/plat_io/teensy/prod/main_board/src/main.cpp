@@ -28,6 +28,8 @@
 // NEW: Time functions module (our NTP/SRTC updater)
 #include "ntp/time_functions.hpp"
 
+#define ESP_TIMESYNC
+
 uint32_t freeRamLow = UINT32_MAX;
 
 // Pin definitions
@@ -279,10 +281,22 @@ void setup() {
     // Initialize SPI
     SPI.begin();
 
+    // Send opcode 0x04 to ESP32 to trigger wsg_read_pass
+    delay(20000);  // give ESP32 time to complete NTP sync first
+    SPI1.begin();
+    pinMode(36, OUTPUT);
+    digitalWrite(36, HIGH);
+    SPI1.beginTransaction(esp_spi_settings);
+    digitalWrite(36, LOW);
+    SPI1.transfer(0x04);
+    digitalWrite(36, HIGH);
+    SPI1.endTransaction();
+    baja::util::Debug::info(F("Sent opcode 0x04 to ESP32"));
+
 #ifdef ESP_TIMESYNC
     // start timesync over spi
     baja::util::Debug::info("Starting time sync with esp");
-    NTPviaSPI sync(&SPI1, 36, esp_spi_settings);
+    NTPviaSPI sync(&SPI1, 36, 2, esp_spi_settings);
     sync.sync();
 #endif
     
@@ -509,9 +523,10 @@ void loop() {
     //     }
     // }
 
-    if (networkInitialized && loopCount % 100 == 2) {
-        // Process NTP time updates
+    static bool ntpSynced = false;
+    if (networkInitialized && loopCount % 100 == 2 && !ntpSynced) {
         baja::time::functions::update();
+        ntpSynced = true;
     }
     
     // System monitoring and status reporting (every 5 seconds)

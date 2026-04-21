@@ -214,7 +214,7 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32
     return ESP_OK;
 }
 
-std::vector WSG_MEM::read_wsg_page(uint32_t page_addr)
+std::vector<wsg_data> WSG_MEM::read_wsg_page(uint32_t page_addr)
 {
     wait_for_ready();
     std::vector<uint8_t> rx_data;

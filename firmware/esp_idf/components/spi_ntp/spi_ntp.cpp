@@ -11,7 +11,7 @@
 
 #define US_PER_SECOND 1000000
 static const char* TAG   = "SPI NTP";
-gpio_num_t handshake_pin = GPIO_NUM_3;
+extern gpio_num_t handshake_pin;
 
 uint64_t buf_to_uint64(std::array<uint8_t, 8> buf)
 {
@@ -56,6 +56,8 @@ void half_timeval(struct timeval* t1)
 
 void recv_time(spi_slave_transaction_t* trans)
 {
+    if (trans->user == NULL) return;  // add this
+        
     // ESP_LOGI(TAG, "recv_time");
     // ESP_LOGI(TAG, "%d", trans->length);
     gpio_set_level(handshake_pin, 1);

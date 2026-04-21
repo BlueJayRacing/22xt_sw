@@ -30,9 +30,9 @@ uint16_t buf_to_uint16(uint8_t * start) {
     return num;
 }
 
-
-SpiWsgRecv::SpiWsgRecv(SPIClass * spi_host_, uint8_t cs_pin_, SPISettings settings_) : spi_host(spi_host_), cs_pin(cs_pin_), spi_settings(settings_) {
+SpiWsgRecv::SpiWsgRecv(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_) : spi_host(spi_host_), cs_pin(cs_pin_), handshake_pin(handshake_pin_), spi_settings(settings_) {
     pinMode(cs_pin, OUTPUT);
+    pinMode(handshake_pin, INPUT); 
     digitalWrite(cs_pin, HIGH);
 }
 
@@ -56,23 +56,31 @@ wsg_data_t SpiWsgRecv::deserialize_message(uint8_t * start) {
 }
 
 // TODO: add error handling
-int recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf) {
+int SpiWsgRecv::recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf) {
+    while(digitalRead(handshake_pin) == LOW);
     spi_host->beginTransaction(spi_settings);
 
     std::array<uint8_t, 1> send_buf = {0x88};
     std::array<uint8_t, MAX_MESSAGE_LEN> ret_buf;
 
     digitalWrite(cs_pin, LOW);
-    spi_host->transfer(send_buf.data(), ret_buf.data(), send_buf.size());
+    spi_host->transfer(send_buf.data(), ret_buf.data(), ret_buf.size());
     digitalWrite(cs_pin, HIGH);
 
-    uin8_t * data_start = ret_buf.data();
+    uint8_t * data_start = ret_buf.data();
     for (int i = 0; i < MESSAGES_PER_DATA_SEND; i++) {
         (*msg_buf)[i] = deserialize_message(data_start);
         data_start += SERIALIZED_MSG_SIZE;
     }
 
     spi_host->endTransaction();
+
+    Serial.print("Received bytes: ");
+    for (int i = 0; i < ret_buf.size(); i++) {
+        Serial.print(ret_buf[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
 
     return 1;
 }
