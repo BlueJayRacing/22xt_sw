@@ -28,7 +28,7 @@
 // NEW: Time functions module (our NTP/SRTC updater)
 #include "ntp/time_functions.hpp"
 
-#define ESP_TIMESYNC
+// #define ESP_TIMESYNC
 
 uint32_t freeRamLow = UINT32_MAX;
 

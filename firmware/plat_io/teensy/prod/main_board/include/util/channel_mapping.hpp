@@ -16,24 +16,42 @@
   * @brief Enumeration of semantic channel names for ADC inputs
   */
  enum class ChannelName {
-     GND,            // ADC AIN 0 - Ground reference
-     SG2,            // ADC AIN 1 - strain guage 2
-     SG1,            // ADC AIN 2 - strain guage 1
-     TWO_5_LDO,      // ADC AIN 3 - 2.5V reference (buffered)
-     LIN_POT_1_FL,   // ADC AIN 4 - linpot 1, FL
-     LIN_POT_2_FR,   // ADC AIN 5 - linpot 2, FR
-     LIN_POT_3_RL,   // ADC AIN 6 - linpot 3, RL
-     LIN_POT_4_RR,   // ADC AIN 7 - linpot 4, RR
-     STEERING_POT,   // ADC AIN 8 - steering linpot
-     CHANNEL_6,      // ADC AIN 9 - Channel 6
+     GND,            // ADC AIN 0  - Ground reference
+     SG2,            // ADC AIN 1  - strain gage 2
+     SG1,            // ADC AIN 2  - strain gage 1
+     TWO_5_LDO,      // ADC AIN 3  - 2.5V reference (buffered)
+     
+     // New channel names based on Squid
+     LIN_POT_1_FL,   // ADC AIN 4  - Channel 1, linpot 1
+     CHANNEL_2,      // ADC AIN 5  - Channel 2
+     LIN_POT_2_FR,   // ADC AIN 6  - Channel 3, linpot 2
+     STEERING_POT_1, // ADC AIN 7  - Channel 4, steering pot option 1
+     CHANNEL_5,      // ADC AIN 8  - Channel 5
+     LIN_POT_3_RL,   // ADC AIN 9  - Channel 6, linpot 3
      CHANNEL_7,      // ADC AIN 10 - Channel 7
-     CHANNEL_8,      // ADC AIN 11 - Channel 8
-     CHANNEL_9,      // ADC AIN 12 - Channel 9
+     LIN_POT_4_RR,   // ADC AIN 11 - Channel 8, linpot 4
+     STEERING_POT_2, // ADC AIN 12 - Channel 9, steering pot option 2
      CHANNEL_10,     // ADC AIN 13 - Channel 10
      MONITORING_V,   // ADC AIN 14 - monitor 5v should be 4.35
      TWO_5_REF,      // ADC AIN 15 - 2.5 v references
      ESP_3V3,        // ADC AIN 16 - esp 3v3
      UNKNOWN         // For invalid mappings
+
+     // Old channel names based on KiCad
+    //  LIN_POT_1_FL,   // ADC AIN 4 - linpot 1, FL
+    //  LIN_POT_2_FR,   // ADC AIN 5 - linpot 2, FR
+    //  LIN_POT_3_RL,   // ADC AIN 6 - linpot 3, RL
+    //  LIN_POT_4_RR,   // ADC AIN 7 - linpot 4, RR
+    //  STEERING_POT,   // ADC AIN 8 - steering linpot
+    //  CHANNEL_6,      // ADC AIN 9 - Channel 6
+    //  CHANNEL_7,      // ADC AIN 10 - Channel 7
+    //  CHANNEL_8,      // ADC AIN 11 - Channel 8
+    //  CHANNEL_9,      // ADC AIN 12 - Channel 9
+    //  CHANNEL_10,     // ADC AIN 13 - Channel 10
+    //  MONITORING_V,   // ADC AIN 14 - monitor 5v should be 4.35
+    //  TWO_5_REF,      // ADC AIN 15 - 2.5 v references
+    //  ESP_3V3,        // ADC AIN 16 - esp 3v3
+    //  UNKNOWN         // For invalid mappings
  };
  
  // Static array of all channel names in their index order
@@ -42,20 +60,20 @@
      ChannelName::SG2,            
      ChannelName::SG1,            
      ChannelName::TWO_5_LDO,      
+     ChannelName::LIN_POT_1_FL, 
+     ChannelName::CHANNEL_2,  
      ChannelName::LIN_POT_2_FR,   
-     ChannelName::LIN_POT_1_FL,   
+     ChannelName::STEERING_POT_1,  
+     ChannelName::CHANNEL_5,  
      ChannelName::LIN_POT_3_RL,   
+     ChannelName::CHANNEL_7,    
      ChannelName::LIN_POT_4_RR,   
-     ChannelName::STEERING_POT,   
-     ChannelName::CHANNEL_6,      
-     ChannelName::CHANNEL_7,      
-     ChannelName::CHANNEL_8,      
-     ChannelName::CHANNEL_9,      
+     ChannelName::STEERING_POT_2,      
      ChannelName::CHANNEL_10,     
      ChannelName::MONITORING_V,   
      ChannelName::TWO_5_REF,      
      ChannelName::ESP_3V3,        
-     ChannelName::UNKNOWN         
+     ChannelName::UNKNOWN   
  };
  
  // String representations of channel names
@@ -70,14 +88,14 @@
      {ChannelName::LIN_POT_2_FR, "front right linpot 2"},
      {ChannelName::LIN_POT_3_RL, "rear left linpot 3"},
      {ChannelName::LIN_POT_4_RR, "rear right linpot 4"},
-     {ChannelName::STEERING_POT, "steering linpot"},
-     {ChannelName::CHANNEL_6, "Channel_6"},
+     {ChannelName::STEERING_POT_1, "steering pot option 1"},
+     {ChannelName::STEERING_POT_2, "steering pot option 2"},
+     {ChannelName::CHANNEL_2, "Channel_2"},
+     {ChannelName::CHANNEL_5, "Channel_5"},
      {ChannelName::CHANNEL_7, "Channel_7"},
-     {ChannelName::CHANNEL_8, "Channel_8"},
-     {ChannelName::CHANNEL_9, "Channel_9"},
      {ChannelName::CHANNEL_10, "Channel_10"},
      {ChannelName::ESP_3V3, "esp 3v3"},
-     {ChannelName::UNKNOWN, "Unknown"}
+     {ChannelName::UNKNOWN, "Unknown"} 
  };
  
  /**
@@ -149,7 +167,8 @@
          case ChannelName::LIN_POT_2_FR:
          case ChannelName::LIN_POT_3_RL:
          case ChannelName::LIN_POT_4_RR:
-         case ChannelName::STEERING_POT:
+         case ChannelName::STEERING_POT_1:
+         case ChannelName::STEERING_POT_2:
          case ChannelName::TWO_5_REF:
              return true; // Data channels enabled by default
          default:

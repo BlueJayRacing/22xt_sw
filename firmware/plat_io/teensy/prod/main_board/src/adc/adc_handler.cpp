@@ -270,7 +270,7 @@ int ADC7175Handler::pollForSample(uint32_t timeout_ms) {
         util::Debug::info(F("ts should never HAPPEN THIS IS A LONG LINE..............."));
     }
 
-    if (internalChannelId == 6) util::Debug::info(F("reading from adc channel: ") + String(internalChannelId) + F(" with value: ") + String(sample.value));
+    // if (internalChannelId == 6) util::Debug::info(F("reading from adc channel: ") + String(internalChannelId) + F(" with value: ") + String(sample.value));
 
     data::ChannelSample channelSample(
         lastConversionTime_,// Microsecond timestamp
