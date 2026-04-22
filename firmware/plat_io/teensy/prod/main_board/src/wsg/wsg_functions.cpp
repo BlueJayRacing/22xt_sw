@@ -41,8 +41,23 @@ void process() {
             count++;
             started_sync = want_to_start_sync;
 
-            // if (msgs[0].wsg_id > 2) return;
+            for (int w = 0; w < MESSAGES_PER_DATA_SEND; w++) {
+                if (msgs[w].wsg_id > 1) return; // data is corrupted
 
+                uint8_t base_id = msgs[w].wsg_id == 0 ? util::WSG0_BASE_CHANNEL_ID : util::WSG1_BASE_CHANNEL_ID;
+                for(int i = 0; i < 3; i++) {
+                    data::ChannelSample channelSample(
+                        msgs[w].timestamp,
+                        base_id + i,
+                        msgs[w].sample[i],
+                        millis()
+                    );
+
+                    // add channel to buffers
+                    mainBuffer_->write(channelSample);
+                    fastBuffer_->write(channelSample);
+                }
+            }
             // // add stuff to channel
             // for (wsg_data_t wsg : msgs) {
             //     util::Debug::info(F("id: ") + String(wsg.wsg_id));

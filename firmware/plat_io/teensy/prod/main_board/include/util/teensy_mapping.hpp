@@ -13,6 +13,9 @@
  
  namespace baja {
  namespace util {
+
+constexpr uint8_t WSG0_BASE_CHANNEL_ID = 22;
+constexpr uint8_t WSG1_BASE_CHANNEL_ID = 25;
  
  /**
   * @brief Internal channel ID enumeration
@@ -48,9 +51,16 @@
      DIN3,
      DIN4,
      DIN5,
+
+     WSG0_SG0 = 22,
+     WSG0_SG1,
+     WSG0_SG2,
+     WSG1_SG0 = 25,
+     WSG1_SG1,
+     WSG1_SG2,
      
      // Miscellaneous channels
-     MISC0 = 22,  // Can be used for system temperature
+     MISC0 = 28,  // Can be used for system temperature
      MISC1,       // Can be used for power supply voltage
      MISC2,       // Can be used for CPU load
      MISC3,       // Can be used for memory usage
@@ -63,7 +73,7 @@
  };
  
  // Total number of channels in the system
- constexpr uint8_t TOTAL_CHANNEL_COUNT = 30;
+ constexpr uint8_t TOTAL_CHANNEL_COUNT = 36;
  
  // String representations of channel IDs with descriptive names
  const std::array<std::string, TOTAL_CHANNEL_COUNT> CHANNEL_NAMES = {
@@ -89,6 +99,12 @@
      "DIN 3",
      "DIN 4",
      "DIN 5",
+     "WSG0_SG0",
+     "WSG0_SG1",
+     "WSG0_SG2",
+     "WSG1_SG0",
+     "WSG1_SG1",
+     "WSG1_SG2",
      "MISC 0 - System temperature",
      "MISC 1 - Power supply",
      "MISC 2 - CPU load",
@@ -170,7 +186,11 @@
          // Digital channels - enable all by default
          return true;
      }
-     else if (id >= 22 && id <= 29) {
+     else if (id >= 22 && id <= 27) {
+        // wsg channels
+        return true;
+     }
+     else if (id >= 28 && id <= 36) {
          // Misc channels - disable by default, enable programmatically as needed
          return false;
      }
