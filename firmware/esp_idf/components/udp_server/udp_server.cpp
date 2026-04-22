@@ -149,7 +149,7 @@ esp_err_t UdpServer::initialize_socket() {
     }
 
     ESP_LOGI(TAG, "Starting the listener thread");
-    ferr = xTaskCreate(udpListenerWorker, "receiver thread", 4096, (void *) this, 1, NULL);
+    ferr = xTaskCreate(udpListenerWorker, "receiver thread", 2<<14, (void *) this, 4, NULL);
     if(ferr != pdPASS)
     {
         ESP_LOGE(TAG, "Could not allocate required memory");
@@ -188,6 +188,8 @@ void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
     UdpServer * server = (UdpServer *) handler_arg;
     Message * msg = (Message *) event_data;
 
+    if (msg == nullptr) return;
+
     inet_ntoa_r(msg->addr.sin_addr, addr_str, sizeof(addr_str) - 1);
     ESP_LOGI(TAG, "message payload len %s, %d", addr_str, msg->payload_len);
 
@@ -197,6 +199,8 @@ void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
     }
 
     server->socket_handler_.send(msg->payload, msg->payload_len, msg->addr);
+
+    // delete msg;
 }
 
 Message * UdpServer::recv_data() {
@@ -223,7 +227,6 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
         BaseType_t ferr;
 
         while (1) {
-            vTaskDelay(10);
             // ESP_LOGI(TAG, "Starting to recv message");
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
@@ -243,10 +246,10 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
             if(ferr != pdPASS)
             {
                 ESP_LOGW(TAG, "Queue is full!");
+                delete msg;
             }
 
             // std::fill_n(buf, 20, 0);
-            vTaskDelay(10);
         }
 
         server->socket_handler_.close_sock();

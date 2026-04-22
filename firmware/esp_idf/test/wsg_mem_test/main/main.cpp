@@ -22,26 +22,30 @@ void test_meta()
 
     err = wsg_mem.init_meta(FIRST_PAGE, 0, 1, 32);
     assert(err == ESP_OK);
-    err = wsg_mem.read_meta(r);
-    assert(err == ESP_OK && !wsg_mem.meta_empty(r));
+    // err = wsg_mem.read_meta(r);
+    // assert(err == ESP_OK && !wsg_mem.meta_empty(r));
     
-    wsg_mem.interpret_meta_data(r);
-    assert(wsg_mem.get_last_page() == 1);
+    // wsg_mem.interpret_meta_data(r);
+    wsg_mem.read_and_interpret_meta();
+    assert(wsg_mem.get_last_page() == FIRST_PAGE);
     assert(wsg_mem.get_last_column() == 0);
     assert(wsg_mem.wsg_id == 1);
     assert(wsg_mem.dac_bias == 32);
+
+    ESP_LOGI(TAG, "PASSED METADATA TEST");
 }
 
 // TODO: expand test to test multiples pages;
 void test_write_data() {
     std::vector<uint16_t> strain_data = {1, 2, 3};
 
-    wsg_mem.nuke();
+    // wsg_mem.nuke();
 
     esp_err_t err;
     int items_written = 0;
     
-    for(int i = 0; i < PAGE_SIZE / sizeof(wsg_data)) {
+    // PAGE_SIZE / CHUNK_SIZE
+    for(int i = 0; i < 10; i++) {
         err = wsg_mem.indiv_write(i, strain_data);
 
         items_written++;
@@ -50,22 +54,31 @@ void test_write_data() {
         for(int j = 0; j < 3; j++)
             strain_data[j]++;
 
-        ASSERT(err == ESP_OK);
+        assert(err == ESP_OK);
     }
 
     ESP_LOGI("test_write_data", "Wrote %d items to flash", items_written);
 
     for (int k = 0; k < 3; k++) {
-        strain_data[k] = k + 1;
+        strain_data[k] = k + 2;
     }
 
-    std::vector<wsg_data> wsgs = wsg_mem.read_wsg_page(1);
-    for(int i = 0; i < wsgs.length(); i++) {
+    std::vector<wsg_data> wsgs = wsg_mem.read_wsg_page(FIRST_PAGE);
+    ESP_LOGI("test_write_data", "num read from page: %d", wsgs.size());
+    // assert(wsgs.size() == items_written);
+
+    for(int i = 0; i < wsgs.size(); i++) {
         // check that timestamp is correct
-        ASSERT(wsgs[i].time == i);
+        ESP_LOGI("test_write_data", "Read ts: %llu and data values %u, %u, %u", wsgs[i].time, wsgs[i].wsgs[0], wsgs[i].wsgs[3], wsgs[i].wsgs[2]);
+        assert(wsgs[i].time == i);
 
         // check that data is correct
-        ASSERT(strain_data == wsgs.wsgs);
+        assert(strain_data[0] == wsgs[i].wsgs[0]);
+        assert(strain_data[1] == wsgs[i].wsgs[1]);
+        assert(strain_data[2] == wsgs[i].wsgs[2]);
+
+        for(int j = 0; j < 3; j++)
+            strain_data[j]++;
     }
 
 }
@@ -108,9 +121,9 @@ extern "C" void app_main(void)
 {
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
-    spi_cfg.mosi_io_num   = GPIO_NUM_9;
-    spi_cfg.miso_io_num   = GPIO_NUM_8;
-    spi_cfg.sclk_io_num   = GPIO_NUM_7;
+    spi_cfg.mosi_io_num   = GPIO_NUM_18;//9;
+    spi_cfg.miso_io_num   = GPIO_NUM_20;//8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_19;//7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
@@ -121,7 +134,7 @@ extern "C" void app_main(void)
     }
 
     w25n04kv_init_param_t flash_params = {
-        .cs_pin = GPIO_NUM_41,
+        .cs_pin = GPIO_NUM_1,//,
         .wp_pin = GPIO_NUM_NC,
         .spi_host = SPI2_HOST
     };

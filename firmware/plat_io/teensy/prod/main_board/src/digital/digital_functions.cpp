@@ -164,9 +164,9 @@ bool process() {
             // if (!(currentTimeMs - lastSampleTimeMs_[i] >= SAMPLE_INTERVAL_MS)) continue;
 
             uint32_t counterValue = digitalCounters_[i];
-            if (counterValue != 0) {
-                util::Debug::info(F("Got count: ") + String(counterValue) + F(" on channel: ") + String(i));
-            }
+            // if (counterValue != 0) {
+            //     util::Debug::info(F("Got count: ") + String(counterValue) + F(" on channel: ") + String(i));
+            // }
             
             // Reset the incremented flag
             digitalCounterIncremented_[i] = false;

@@ -8,5 +8,5 @@
         "IDF_TARGET": "esp32s3",
         "OPENOCD_USB_ADAPTER_LOCATION": "5-1"
     },
-    "idf.port": "/dev/ttyACM1"
+    "idf.port": "/dev/ttyACM2"
 }

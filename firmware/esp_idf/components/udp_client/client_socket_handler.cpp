@@ -66,6 +66,8 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
 
     if(err < 0) {
         ESP_LOGE(TAG, "Error sending message over socket");
+        close_sock();
+        partial_socket_init();
         return ESP_FAIL;
     }
 

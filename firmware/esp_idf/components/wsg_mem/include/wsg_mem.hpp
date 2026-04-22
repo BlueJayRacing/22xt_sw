@@ -13,7 +13,7 @@
 #define PAGE_COLUMN_META_SIZE 6  // size for page and column metadata
 #define METADATA_SIZE         9 // 6 for page/column + 1 for id + 2 for dac bias
 #define META_PAGE             0
-#define FIRST_PAGE            1
+#define FIRST_PAGE            2
 #define PAGE_SIZE 2047
 
 typedef struct {

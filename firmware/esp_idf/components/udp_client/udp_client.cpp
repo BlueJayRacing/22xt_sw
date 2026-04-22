@@ -14,7 +14,7 @@ uint64_t get_timestamp() {
 }
 
 UdpClient::UdpClient() {
-    recv_queue = xQueueCreate(10, sizeof(Message *));
+    recv_queue = xQueueCreate(30, sizeof(Message *));
 }
 
 UdpClient::~UdpClient() {
@@ -185,7 +185,7 @@ esp_err_t UdpClient::initialize_socket() {
         return err;
     }
 
-    BaseType_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 1<<12, (void *) this, 1, NULL);
+    BaseType_t rtos_err = xTaskCreate(udpListenerWorker, "receiver thread", 1<<12, (void *) this, 2, NULL);
     if (rtos_err != pdPASS) {
         ESP_LOGE(TAG, "Failed to create listener worker task");
         return ESP_FAIL;
@@ -206,6 +206,7 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     msg->payload = buf;
     msg->payload_len = buff_size;
 
+    // udp_send_event_handler((void *) this, NULL, 0, (void*)msg);
     esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
@@ -218,6 +219,8 @@ void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
     UdpClient * client = (UdpClient *) handler_arg;
     Message * msg = (Message *) event_data;
 
+    if (msg == nullptr) return;
+
     if (!client->is_wifi_connected()) {
         client->ensure_wifi_connection(5);
         ESP_LOGE(TAG, "Disconnected from ap");
@@ -225,6 +228,7 @@ void UdpClient::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
 
     ESP_LOGI(TAG, "Sending message");
     client->socket_handler_.send(msg->payload, msg->payload_len);
+    // delete msg;
 }
 
 Message * UdpClient::recv_data() {

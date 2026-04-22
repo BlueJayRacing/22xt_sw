@@ -26,16 +26,16 @@ extern "C" void app_main(void)
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
-    spi_cfg.mosi_io_num   = GPIO_NUM_9;
-    spi_cfg.miso_io_num   = GPIO_NUM_8;
-    spi_cfg.sclk_io_num   = GPIO_NUM_7;
+    spi_cfg.mosi_io_num   = GPIO_NUM_18;//9;
+    spi_cfg.miso_io_num   = GPIO_NUM_20;//8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_19;//7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin   = GPIO_NUM_26;
+    flash_init_params.cs_pin   = GPIO_NUM_1;//26;
     flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 
@@ -79,7 +79,7 @@ extern "C" void app_main(void)
 
         ESP_LOGI(TAG, "Erasing page");
 
-        spi_flash_.eraseBlock(page_address); // & 0x1FFC0);
+        // spi_flash_.eraseBlock(page_address); // & 0x1FFC0);
 
         vTaskDelay(100);
 
@@ -91,7 +91,7 @@ extern "C" void app_main(void)
         }
 
         // spi_flash_.enableWrite();
-        spi_flash_.writePage(tx_data, page_address, 0);
+        spi_flash_.writePage(tx_data, page_address, 100);
 
         vTaskDelay(10);
         spi_flash_.enableWrite();
@@ -101,7 +101,7 @@ extern "C" void app_main(void)
         int k = 1;
         for (int i = 0; i < k; i++) {
             vTaskDelay(100);
-            spi_flash_.readPage(rx_data, page_address, 0);
+            spi_flash_.readPage(rx_data, page_address, 100);
             for (int j = 0; j < TEST_LENGTH; j++) {
                 ESP_LOGI(TAG, "Read data %d", rx_data[j]);
             }

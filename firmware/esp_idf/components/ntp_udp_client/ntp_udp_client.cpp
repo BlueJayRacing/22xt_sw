@@ -32,7 +32,7 @@
 #define PORT 2222
 #define HOST_IP_ADDR "192.168.4.1"
 #define US_PER_SECOND 1000000
-static const char *TAG = "UDP SOCKET CLIENT";
+static const char *TAG = "UDP NTP CLIENT";
 
 void sub_timeval(struct timeval t1, struct timeval t2, struct timeval *td)
 {
@@ -195,11 +195,11 @@ static void udp_client_task(void *pvParameters)
             gettimeofday(&cur_time, NULL);
             sub_timeval(offset, cur_time, &cur_time);
             ESP_LOGI(TAG, "Err: %d", settimeofday(&cur_time, NULL));
-            ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t) cur_time.tv_sec, (int64_t) cur_time.tv_usec);
+            ESP_LOGI(TAG, "Seconds: %llu, Microseconds: %llu", (int64_t) cur_time.tv_sec, (int64_t) cur_time.tv_usec);
 
-            taskYIELD();
+            // taskYIELD();
 
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            vTaskDelay(pdMS_TO_TICKS(60000));
         }
 
         // break;break

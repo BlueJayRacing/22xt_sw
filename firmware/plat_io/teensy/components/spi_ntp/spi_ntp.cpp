@@ -47,6 +47,19 @@ NTPviaSPI::NTPviaSPI(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin
     digitalWrite(cs_pin, HIGH);
 }
 
+NTPviaSPI::NTPviaSPI() {}
+
+void NTPviaSPI::init(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_) {
+    spi_host = spi_host_;
+    cs_pin = cs_pin_;
+    handshake_pin = handshake_pin_;
+    spi_settings = settings_;
+
+    pinMode(cs_pin, OUTPUT);
+    pinMode(handshake_pin, INPUT); 
+    digitalWrite(cs_pin, HIGH);
+}
+
 int32_t NTPviaSPI::sync()
 {
     // send msg telling esp to start sync
@@ -67,9 +80,12 @@ int32_t NTPviaSPI::sync()
 
     // check if esp is up
     do {
-        Serial.printf("check if esp is up\n");
-        while(digitalRead(handshake_pin) == LOW);
+        Serial.println("check if esp is up");
+        while(digitalRead(handshake_pin) == LOW) {
+            // Serial.println(digitalRead(handshake_pin));
+        }
         digitalWrite(cs_pin, LOW);
+        Serial.println("starting transfer");
         spi_host->transfer(send_buf, ret_buf, 8);
         // spi_host->transfer(ret_buf.data(), 8);
         digitalWrite(cs_pin, HIGH);
@@ -125,6 +141,8 @@ int32_t NTPviaSPI::sync()
     digitalWrite(cs_pin, HIGH);
     
     spi_host->endTransaction();
+
+    Serial.printf("Timestamp own: %llu\n", getMicrosecondsSinceEpoch());
 
     return 0;
 }

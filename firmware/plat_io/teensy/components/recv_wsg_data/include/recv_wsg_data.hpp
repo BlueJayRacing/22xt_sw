@@ -23,8 +23,10 @@ uint16_t buf_to_uint16(uint8_t * start);
 
 class SpiWsgRecv {
     public:
-        SpiWsgRecv::SpiWsgRecv(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_);
-        int recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf);
+        SpiWsgRecv(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_);
+        SpiWsgRecv();
+        void init(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_);
+        int recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf, bool next_iter_sync);
     
     private:
         uint8_t cs_pin;

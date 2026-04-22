@@ -100,20 +100,20 @@ extern "C" void app_main(void) {
     //     err = client.publish_data(0, tx_data, 1);
     //     msg = client.recv_data();
     // }
-
-    sync();
-    taskYIELD();
+    // xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 3, &data_read_handle, (UBaseType_t)1);
+    start_client_timesync_loop();
+    // taskYIELD();
     ESP_LOGI(TAG, "Finished sync");
     // if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
     //     free(msg);
 
 #ifdef FLASH_MEM
         // start tasks
-        xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 2, &write_handle, (UBaseType_t)0);
+        xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 3, &write_handle, (UBaseType_t)0);
 #endif
 #endif
-
-        xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 1, &data_read_handle, (UBaseType_t)1);
+        ESP_LOGI(TAG, "STARTED SYNC");
+        xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 3, &data_read_handle, (UBaseType_t)1);
 // #ifndef DATA_READ_ONLY
 //     } else if (msg->payload_len <= 2 && msg->payload[0] == 0x04) {
 //         // start calibration task
@@ -168,6 +168,7 @@ void vTaskDataProcessing(void* pvParameter)
     sensors.setDACValue(wsg_mem.dac_bias);
 #else
     sensors.setDACValue(40000);
+    dac_bias = 0x15;
 #endif
 
     int array_ct = 0;
@@ -181,19 +182,21 @@ void vTaskDataProcessing(void* pvParameter)
     ESP_LOGI(TAG, "INIT SHIT");
 
     while (1) {
+        ESP_LOGI(TAG, "SAMPLING");
         sample = new wsg_data_t();
         memset(sample, 0, sizeof(wsg_data_t));
+        sample->wsg_id = 1;
         sample->timestamp = get_timestamp();
         sample->dac_bias  = dac_bias;
 
         for (int i = 0; i < 3; i++) {
             drive_cfg.channel = SG_CHANNELS[i];
             sensors.configure(drive_cfg);
-            vTaskDelay(pdMS_TO_TICKS(10));
+            // vTaskDelay(10);
             sensors.measure(false, &measure);
 
-            // sample->sample[i] = measure.adc_value;
-            ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
+            sample->sample[i] = 0x37;//measure.adc_value;
+            // ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
         }
 
 #ifndef DATA_READ_ONLY

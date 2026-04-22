@@ -32,7 +32,7 @@
 #include "ping/ping_sock.h"
 
 #define PORT 2222
-static const char* TAG = "UDP SOCKET SERVER";
+static const char* TAG = "UDP NTP SERVER";
 
 static void udp_server_task(void* pvParameters)
 {
@@ -170,6 +170,6 @@ void init_server_wifi()
 void start_server_timesync_loop(void)
 {
     // udp_server_task((void *) AF_INET);
-    xTaskCreate(udp_server_task, "udp_server", 4096, (void*)AF_INET, 1, NULL);
+    xTaskCreate(udp_server_task, "udp_server", 4096, (void*)AF_INET, 3, NULL);
     return;
 }

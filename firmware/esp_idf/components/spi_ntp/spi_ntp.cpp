@@ -62,23 +62,23 @@ void recv_time(spi_slave_transaction_t* trans)
     // ESP_LOGI(TAG, "%d", trans->length);
     gpio_set_level(handshake_pin, 1);
     NTPviaSPI* obj = (NTPviaSPI*)trans->user;
-    int64_t now_us = esp_timer_get_time();
+    // int64_t now_us = esp_timer_get_time();
 
     switch (obj->recv_count) {
     case 0:
         // ESP_LOGI(TAG, "Received pre-transmission");
         break;
     case 1:
-        // gettimeofday(&(obj->t0), NULL);
+        gettimeofday(&(obj->t0), NULL);
         // ESP_LOGI(TAG, "Received transmission 0");
-        obj->t0.tv_sec  = now_us / 1000000;
-        obj->t0.tv_usec = now_us % 1000000;
+        // obj->t0.tv_sec  = now_us / 1000000;
+        // obj->t0.tv_usec = now_us % 1000000;
         break;
     case 2:
-        // gettimeofday(&(obj->t3), NULL);
+        gettimeofday(&(obj->t3), NULL);
         // ESP_LOGI(TAG, "Received transmission 1");
-        obj->t3.tv_sec  = now_us / 1000000;
-        obj->t3.tv_usec = now_us % 1000000;
+        // obj->t3.tv_sec  = now_us / 1000000;
+        // obj->t3.tv_usec = now_us % 1000000;
         break;
     case 3:
         // ESP_LOGI(TAG, "Received transmission 2");
@@ -374,7 +374,7 @@ esp_err_t NTPviaSPI::sync()
     gettimeofday(&cur_time, NULL);
     // final
     ESP_LOGI(TAG, "cur_time before: %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
-    add_timeval(cur_time, offset, &cur_time);
+    sub_timeval(offset, cur_time, &cur_time);
     settimeofday(&cur_time, NULL);
     ESP_LOGI(TAG, "cur_time after:  %lld.%06lld", (int64_t)cur_time.tv_sec, (int64_t)cur_time.tv_usec);
 

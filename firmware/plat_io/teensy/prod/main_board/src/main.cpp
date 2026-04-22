@@ -15,15 +15,13 @@
 #include "util/sample_data.hpp"
 #include "util/debug_util.hpp"
 #include "util/channel_mapping.hpp"
-#include <spi_ntp.hpp>
-// #include <recv_wsg_data.hpp>
 
 // Thread modules
 #include "adc/adc_functions.hpp"
 #include "storage/sd_functions.hpp"
 #include "network/pbudp_functions.hpp"      // Combined PB+UDP thread
 #include "digital/digital_functions.hpp"    // Digital input monitoring
-// #include "wsg_streaming/wsg_functions.hpp"
+#include "wsg/wsg_functions.hpp"
 
 // NEW: Time functions module (our NTP/SRTC updater)
 #include "ntp/time_functions.hpp"
@@ -64,7 +62,7 @@ uint32_t samplesProcessedTotal = 0;
 uint32_t startTime = 0;
 uint32_t lastSampleCount = 0;
 
-SPISettings esp_spi_settings(10000000, MSBFIRST, SPI_MODE0);
+SPISettings esp_spi_settings(5000000, MSBFIRST, SPI_MODE0);
 // SpiWsgRecv recv_wsg(&SPI1, 36, esp_spi_settings);
 
 // Global system state variables for Status LED
@@ -256,7 +254,7 @@ void printSystemStatus() {
 
 void setup() {
     // Initialize serial
-    Serial.begin(115200);
+    Serial.begin(9600);
     while (!Serial && millis() < 1000) { }
     
     // Record start time
@@ -281,25 +279,10 @@ void setup() {
     // Initialize SPI
     SPI.begin();
 
-    // Send opcode 0x04 to ESP32 to trigger wsg_read_pass
-    delay(20000);  // give ESP32 time to complete NTP sync first
     SPI1.begin();
-    pinMode(36, OUTPUT);
-    digitalWrite(36, HIGH);
-    SPI1.beginTransaction(esp_spi_settings);
-    digitalWrite(36, LOW);
-    SPI1.transfer(0x04);
-    digitalWrite(36, HIGH);
-    SPI1.endTransaction();
-    baja::util::Debug::info(F("Sent opcode 0x04 to ESP32"));
 
-#ifdef ESP_TIMESYNC
-    // start timesync over spi
-    baja::util::Debug::info("Starting time sync with esp");
-    NTPviaSPI sync(&SPI1, 36, 2, esp_spi_settings);
-    sync.sync();
-#endif
-    
+    baja::wsg_streaming::init(&SPI1, 36, 2, esp_spi_settings, sampleBuffer, fastBuffer);
+
     // Initialize channel configurations
     bool configSuccess = baja::adc::initializeChannelConfigs(
         channelConfigsArray, 
@@ -497,7 +480,7 @@ void loop() {
     // receive data from wsg over spi
     // may need to make handler to add it to circle buf
     // TODO: THIS
-    // baja::wsg_streaming::process();
+    baja::wsg_streaming::process();
     
     // Process SD operations - only if enough samples are available
     // (This is already handled in SDWriter::process())
