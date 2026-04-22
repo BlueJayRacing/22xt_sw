@@ -79,8 +79,6 @@
  // String representations of channel names
  const std::unordered_map<ChannelName, std::string> CHANNEL_NAME_STRINGS = {
      {ChannelName::GND, "GND"},
-     {ChannelName::MONITORING_V, "5V level monitor"},
-     {ChannelName::TWO_5_REF, "2.5V_Ref"},
      {ChannelName::TWO_5_LDO, "2.5V ldo"},
      {ChannelName::SG2, "SG2"},
      {ChannelName::SG1, "SG1"},
@@ -94,6 +92,8 @@
      {ChannelName::CHANNEL_5, "Channel_5"},
      {ChannelName::CHANNEL_7, "Channel_7"},
      {ChannelName::CHANNEL_10, "Channel_10"},
+     {ChannelName::MONITORING_V, "5V level monitor"},
+     {ChannelName::TWO_5_REF, "2.5V_Ref"},
      {ChannelName::ESP_3V3, "esp 3v3"},
      {ChannelName::UNKNOWN, "Unknown"} 
  };
