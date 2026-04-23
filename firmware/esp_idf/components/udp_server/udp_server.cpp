@@ -165,16 +165,15 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     }
 
     esp_err_t err;
-    Message * msg = new Message();
-    memset(msg, 0, sizeof(Message));
-    msg->timestamp = timestamp_;
-    msg->payload = buf;
-    msg->payload_len = buff_size;
+    Message msg;
+    msg.timestamp = timestamp_;
+    msg.payload = buf;
+    msg.payload_len = buff_size;
 
-    ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg->payload_len);
+    ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg.payload_len);
     msg->addr = dest_addr;
     
-    err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
+    err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, &msg, sizeof(Message), 5);
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to register the event handler to the event loop: %s", esp_err_to_name(err));

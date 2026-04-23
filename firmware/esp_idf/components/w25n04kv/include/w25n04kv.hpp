@@ -15,7 +15,7 @@
 #define W25N04KV_OP_CODE_WRITE_ENABLE   0x06
 #define W25N04KV_OP_CODE_WRITE_DISABLE  0x04
 #define W25N04KV_OP_CODE_BLOCK_ERASE    0xD8
-#define W25N04KV_OP_CODE_DATA_LOAD      0x02
+#define W25N04KV_OP_CODE_DATA_LOAD      0x84 //0x02
 #define W25N04KV_OP_CODE_DATA_EXECUTE   0x10
 #define W25N04KV_OP_CODE_PAGE_READ_DATA 0x13
 #define W25N04KV_OP_CODE_READ_DATA      0x03
@@ -73,6 +73,7 @@ class W25N04KV {
     esp_err_t printConfigReg(void);
     esp_err_t printStatusReg(void);
     esp_err_t writeConfigRegister(uint8_t byte);
+    esp_err_t wait_for_ready(void);
 
   private:
     esp_err_t transfer(const uint8_t op_code, std::vector<uint8_t>& rx_data, const uint64_t address,

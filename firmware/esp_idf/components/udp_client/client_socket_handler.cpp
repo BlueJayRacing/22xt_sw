@@ -57,7 +57,7 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
         partial_socket_init();
     }
 
-    ESP_LOGI(TAG, "sending %d %d", is_socket_open(), buf_len);
+    // ESP_LOGI(TAG, "sending %d %d", is_socket_open(), buf_len);
     // for (int i = 0; i < buf.size(); i ++) {
     //     ESP_LOGI(TAG, "%d: %d", i, buf[i]);
     // }

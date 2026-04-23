@@ -223,7 +223,7 @@ std::vector<wsg_data> WSG_MEM::read_wsg_page(uint32_t page_addr)
     std::vector<uint8_t> rx_data(PAGE_SIZE);
     // ESP_LOGI(TAG, "read page %u", page_addr);
     spi_flash_.readPage(rx_data, page_addr, 0);
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 50; i++) {
         ESP_LOGW(TAG, "Byte %d: %02x", i, rx_data[i]);
     }
     // while(1) {};
@@ -404,6 +404,10 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
     last_column += (CHUNK_SIZE);
     return ESP_OK;
 }
+
+// esp_err_t WSG_MEM::indiv_write(uint64_t, std::array<uint8_t, 3> wsgs) {
+
+// }
 
 // esp_err_t WSG_MEM::cont_write(std::vector<uint16_t>& wsg_data)
 // {

@@ -196,7 +196,7 @@ void vTaskDataProcessing(void* pvParameter)
             // vTaskDelay(10);
             sensors.measure(false, &measure);
 
-            sample->sample[i] = 0x37;//measure.adc_value;
+            sample->sample[i] = measure.adc_value;
             // ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
         }
 

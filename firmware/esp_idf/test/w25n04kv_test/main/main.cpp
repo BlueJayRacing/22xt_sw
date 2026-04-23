@@ -43,6 +43,7 @@ extern "C" void app_main(void)
 
     vTaskDelay(100);
 
+    
     ret = spi_flash_.init(flash_init_params);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI Flash: %d", ret);

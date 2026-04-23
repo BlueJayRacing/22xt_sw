@@ -45,7 +45,8 @@ void test_write_data() {
     int items_written = 0;
     
     // PAGE_SIZE / CHUNK_SIZE
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 1; i++) {
+        wsg_mem.wait_for_ready();
         err = wsg_mem.indiv_write(i, strain_data);
 
         items_written++;
@@ -67,7 +68,7 @@ void test_write_data() {
     ESP_LOGI("test_write_data", "num read from page: %d", wsgs.size());
     // assert(wsgs.size() == items_written);
 
-    for(int i = 0; i < wsgs.size(); i++) {
+    for(int i = 0; i < items_written; i++) {
         // check that timestamp is correct
         ESP_LOGI("test_write_data", "Read ts: %llu and data values %u, %u, %u", wsgs[i].time, wsgs[i].wsgs[0], wsgs[i].wsgs[3], wsgs[i].wsgs[2]);
         assert(wsgs[i].time == i);

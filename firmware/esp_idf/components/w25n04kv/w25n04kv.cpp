@@ -24,7 +24,7 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
     spi_device_interface_config_t spi_device_cfg;
     memset(&spi_device_cfg, 0, sizeof(spi_device_interface_config_t));
 
-    spi_device_cfg.mode           = 0;
+    spi_device_cfg.mode           = 3;
     spi_device_cfg.clock_speed_hz = 1000000;
     spi_device_cfg.spics_io_num   = t_init_param.cs_pin;
     spi_device_cfg.flags          = SPI_DEVICE_HALFDUPLEX;
@@ -52,14 +52,15 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
 
     ESP_LOGI(TAG, "Added device to SPI Bus");
 
+    wait_for_ready();
     ret = reset();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to reset device: %d", ret);
         return ret;
     }
 
-    vTaskDelay(5);
-
+    vTaskDelay(100);
+    wait_for_ready();
     ret = disableWriteProtection();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to disable write protection on device: %d", ret);
@@ -67,7 +68,7 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
     }
 
     vTaskDelay(5);
-
+    wait_for_ready();
     ret = writeConfigRegister(0b00011000);
     ESP_LOGI(TAG, "Initialized W25N04KV Device");
 
@@ -178,6 +179,7 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
     // ESP_LOGI(TAG, "From write page");
 
     // printStatusReg();
+    printStatusReg();
 
     std::vector<uint8_t> dummy_rx;
     // uint64_t block_addr = (uint64_t)(page_address & PADDR_SIZE) << 12 | (uint64_t)(column_address & CADDR_SIZE);
@@ -230,7 +232,7 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
 {
     std::vector<uint8_t> rx_data(1);
 
-    esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0xC0, 8, 1);
+    esp_err_t ret = transfer(W25N04KV_OP_CODE_READ_STAT_REG, rx_data, 0xA0, 8, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read status register: %d", ret);
         return ret;
@@ -341,6 +343,16 @@ esp_err_t W25N04KV::printConfigReg(void)
     ESP_LOGI(TAG, "Config/Status Reg 1: buffer mode %d", config_status.buffer_mode);
     ESP_LOGI(TAG, "Config/Status Reg 1: output driver strength %d", config_status.output_driver_strength);
     ESP_LOGI(TAG, "Config/Status Reg 1: hold disable %d", config_status.hold_disable);
+
+    return ESP_OK;
+}
+
+esp_err_t W25N04KV::wait_for_ready() {
+    w25n04kv_device_status_t status;
+    do {
+        esp_err_t err = readStatus(&status);
+        if (err != ESP_OK) return err;
+    } while (status.is_busy);
 
     return ESP_OK;
 }
