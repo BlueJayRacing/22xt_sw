@@ -14,7 +14,7 @@ static int total_sample_count = 0;
 static bool started_sync = false;
 
 static int count = 0;
-static int sync_rate = 10;
+static int sync_rate = 1000;
 
 static bool override_sync = false;
 
@@ -59,14 +59,14 @@ void process() {
                 }
             }
             // // add stuff to channel
-            // for (wsg_data_t wsg : msgs) {
-            //     util::Debug::info(F("id: ") + String(wsg.wsg_id));
-            //     util::Debug::info(F("Timestamp: ") + String(wsg.timestamp));
-            //     util::Debug::info(F("Dac Bias: ") + String(wsg.dac_bias));
-            //     util::Debug::info(F("Sample 1: ") + String(wsg.sample[0]));
-            //     util::Debug::info(F("Sample 2: ") + String(wsg.sample[1]));
-            //     util::Debug::info(F("Sample 3: ") + String(wsg.sample[2]));
-            // }
+            for (wsg_data_t wsg : msgs) {
+                util::Debug::info(F("id: ") + String(wsg.wsg_id));
+                util::Debug::info(F("Timestamp: ") + String(wsg.timestamp));
+                util::Debug::info(F("Dac Bias: ") + String(wsg.dac_bias));
+                util::Debug::info(F("Sample 1: ") + String(wsg.sample[0]));
+                util::Debug::info(F("Sample 2: ") + String(wsg.sample[1]));
+                util::Debug::info(F("Sample 3: ") + String(wsg.sample[2]));
+            }
         }
     } else {
         sync_handler.sync();

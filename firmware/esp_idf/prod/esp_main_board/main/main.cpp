@@ -174,7 +174,7 @@ void wsg_read_pass(void * pvParams)
         // ESP_LOGI(TAG, "STARTED LOOP");
         msg = server.recv_data();
         if (msg == nullptr) {
-            vTaskDelay(pdMS_TO_TICKS(100));
+            // vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
         // ESP_LOGI(TAG, "receved bytes:");
@@ -209,7 +209,7 @@ void wsg_read_pass(void * pvParams)
         if (data[0] == 0x88) {
             spi_sync.sync();
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskDelay(pdMS_TO_TICKS(1000));
 #endif
         delete msg;
     }

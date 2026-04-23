@@ -1,6 +1,6 @@
 #include "client_socket_handler.hpp"
 
-static const char* TAG = "socket handler";
+static const char* TAG = "client socket handler";
 
 SocketHandler::SocketHandler() {
     mutex = xSemaphoreCreateMutex();
@@ -65,7 +65,7 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
     int err = sendto(sock, buf.data(), buf_len, 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
     if(err < 0) {
-        ESP_LOGE(TAG, "Error sending message over socket");
+        ESP_LOGE(TAG, "Error sending message over socket %d", err);
         close_sock();
         partial_socket_init();
         return ESP_FAIL;

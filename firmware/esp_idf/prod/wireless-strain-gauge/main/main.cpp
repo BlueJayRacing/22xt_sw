@@ -182,12 +182,13 @@ void vTaskDataProcessing(void* pvParameter)
     ESP_LOGI(TAG, "INIT SHIT");
 
     while (1) {
-        ESP_LOGI(TAG, "SAMPLING");
         sample = new wsg_data_t();
         memset(sample, 0, sizeof(wsg_data_t));
         sample->wsg_id = 1;
         sample->timestamp = get_timestamp();
         sample->dac_bias  = dac_bias;
+
+        // ESP_LOGI(TAG, "SAMPLING %llu", sample->timestamp);
 
         for (int i = 0; i < 3; i++) {
             drive_cfg.channel = SG_CHANNELS[i];
@@ -221,7 +222,7 @@ void vTaskDataProcessing(void* pvParameter)
             array_ct = 0;
         }
 #endif
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskDelay(pdMS_TO_TICKS(100));
         delete sample;
         // esp_task_wdt_reset();
     }
@@ -260,6 +261,7 @@ esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr)
     std::array<uint8_t, 19> temp_d;
     for (int i = 0; i < data_arr.size(); i++) {
         temp_d = serialize_wsg_data(data_arr[i]);
+        // ESP_LOGI(TAG, "%02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x", temp_d[0], temp_d[1], temp_d[2], temp_d[3], temp_d[4], temp_d[5], temp_d[6], temp_d[7], temp_d[8], temp_d[9], temp_d[10], temp_d[11], temp_d[12], temp_d[13], temp_d[14], temp_d[15], temp_d[16], temp_d[17], temp_d[18]);
         std::copy(temp_d.begin(), temp_d.end(), send_data.begin() + (i * 19));
     }
 

@@ -200,14 +200,19 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
         return ESP_FAIL;
     }
     
-    Message * msg = new Message();
-    memset(msg, 0, sizeof(Message));
-    msg->timestamp = timestamp_;
-    msg->payload = buf;
-    msg->payload_len = buff_size;
+    // Message * msg = new Message();
+    // memset(msg, 0, sizeof(Message));
+    // msg->timestamp = timestamp_;
+    // msg->payload = buf;
+    // msg->payload_len = buff_size;
+
+    Message msg;
+    msg.timestamp = timestamp_;
+    msg.payload = buf;
+    msg.payload_len = buff_size;
 
     // udp_send_event_handler((void *) this, NULL, 0, (void*)msg);
-    esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, msg, sizeof(Message), 5);
+    esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, &msg, sizeof(Message), 5);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
     }
@@ -253,7 +258,7 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
         }
 
         while (1) {
-            vTaskDelay(10);
+            vTaskDelay(10);//pdMS_TO_TICKS(5000));
 
             if(!client->is_wifi_connected()) {
                 client->ensure_wifi_connection(5);
@@ -262,7 +267,7 @@ void UdpClient::udpListenerWorker(void * pvParamter) {
 
             Message * msg = new Message();
             memset(msg, 0, sizeof(Message));
-            int len = client->socket_handler_.recv(msg);
+            int len = -1;//client->socket_handler_.recv(msg);
             if(len < 0) {
                 delete msg;
                 continue;

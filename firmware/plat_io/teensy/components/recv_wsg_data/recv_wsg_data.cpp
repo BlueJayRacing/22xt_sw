@@ -3,7 +3,7 @@
 uint64_t buf_to_uint64(uint8_t * start) {
     uint64_t num = 0;
     for (int i = 0; i < 8; i++) {
-        num += *start << ((7-i) * 8);
+        num += (uint64_t)*start << ((7-i) * 8);
         start++;
     }
 
@@ -13,7 +13,7 @@ uint64_t buf_to_uint64(uint8_t * start) {
 uint32_t buf_to_uint32(uint8_t * start) {
     uint32_t num = 0;
     for (int i = 0; i < 4; i++) {
-        num += *start << ((3-i) * 8);
+        num += (uint32_t)*start << ((3-i) * 8);
         start++;
     }
 
@@ -23,7 +23,7 @@ uint32_t buf_to_uint32(uint8_t * start) {
 uint16_t buf_to_uint16(uint8_t * start) {
     uint16_t num = 0;
     for (int i = 0; i < 2; i++) {
-        num += *start << ((1-i) * 8);
+        num += (uint16_t)*start << ((1-i) * 8);
         start++;
     }
 

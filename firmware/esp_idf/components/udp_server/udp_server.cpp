@@ -206,7 +206,7 @@ void UdpServer::udp_send_event_handler(void* handler_arg, esp_event_base_t base,
 Message * UdpServer::recv_data() {
     Message * msg = nullptr;
     if (xQueueReceive(recv_queue, &msg, 10) == pdPASS) {
-        // ESP_LOGI(TAG, "returned message");
+        ESP_LOGI(TAG, "returned message");
         return msg;
     }
 

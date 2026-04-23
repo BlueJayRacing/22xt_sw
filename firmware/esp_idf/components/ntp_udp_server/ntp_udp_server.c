@@ -43,6 +43,8 @@ static void udp_server_task(void* pvParameters)
     int ip_protocol = 0;
     struct sockaddr_in6 dest_addr;
 
+    int loop_count = 0;
+
     while (1) {
         struct sockaddr_in* dest_addr_ip4 = (struct sockaddr_in*)&dest_addr;
         dest_addr_ip4->sin_addr.s_addr    = htonl(INADDR_ANY);
@@ -82,6 +84,12 @@ static void udp_server_task(void* pvParameters)
         char sent_strftime[64];
 
         while (1) {
+            // if (loop_count != 0) {
+            //     vTaskDelay(pdMS_TO_TICKS(10000));
+            // } else {
+            //     loop_count ++;
+            // }
+
             ESP_LOGI(TAG, "Waiting for data");
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr*)&source_addr, &socklen);
             gettimeofday(&recv_time, NULL);
@@ -112,6 +120,9 @@ static void udp_server_task(void* pvParameters)
             } else {
                 ESP_LOGI(TAG, "Did not received data");
             }
+            
+            // vTaskDelay(pdMS_TO_TICKS(60000));
+
         }
 
         if (sock != -1) {
