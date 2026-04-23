@@ -93,12 +93,12 @@ int SpiWsgRecv::recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf, b
 
         spi_host->endTransaction();
 
-        Serial.print("Received bytes: ");
-        for (int i = 0; i < ret_buf.size(); i++) {
-            Serial.print(ret_buf[i], HEX);
-            Serial.print(" ");
-        }
-        Serial.println();
+        // Serial.print("Received bytes: ");
+        // for (int i = 0; i < ret_buf.size(); i++) {
+        //     Serial.print(ret_buf[i], HEX);
+        //     Serial.print(" ");
+        // }
+        // Serial.println();
 
         return 1;
     }
