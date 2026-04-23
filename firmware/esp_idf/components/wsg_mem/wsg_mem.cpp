@@ -46,9 +46,9 @@ esp_err_t WSG_MEM::wait_for_ready(int timeout)
     return ESP_ERR_TIMEOUT;
 }
 
-bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
+bool WSG_MEM::page_empty(std::vector<uint8_t> meta, int page_size)
 {
-    for (int i = 0; i < METADATA_SIZE; i++) {
+    for (int i = 0; i < page_size; i++) {
         if (meta[i] != 255) {
             return false;
         }
@@ -56,20 +56,20 @@ bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
     return true;
 }
 
-esp_err_t WSG_MEM::set_dac_bias(uint16_t dac_bias) {
-    return init_meta(last_page, last_column, wsg_id, dac_bias);
-}
+esp_err_t WSG_MEM::set_dac_bias(uint16_t dac_bias) { return init_meta(last_page, last_column, wsg_id, dac_bias); }
 
-esp_err_t WSG_MEM::set_wsg_id(uint8_t id) {
-    return init_meta(last_page, last_column, id, dac_bias);
-}
+esp_err_t WSG_MEM::set_wsg_id(uint8_t id) { return init_meta(last_page, last_column, id, dac_bias); }
+
+esp_err_t WSG_MEM::set_last_page(uint32_t page) : last_page(page) {}
+
+esp_err_t WSG_MEM::set_last_col(uint16_t col) : last_page(page) {}
 
 esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_)
 {
     last_page   = page;
     last_column = column;
     wsg_id      = wsg_id_;
-    dac_bias   = dac_bias_;
+    dac_bias    = dac_bias_;
 
     std::vector<uint8_t> tx_data(METADATA_SIZE);
     // updating first page with metadata
@@ -117,7 +117,7 @@ esp_err_t WSG_MEM::init(w25n04kv_init_param_t flash)
     wait_for_ready();
     spi_flash_.printStatusReg();
     spi_flash_.printConfigReg();
-    
+
     // wsg_id = wsg_id_;
     // dac_bias = dac_bias_;
 
@@ -135,7 +135,7 @@ std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data
     std::vector<wsg_data> wsgs(len);
     // we need to read the timestamp and wsg values into the elements
     for (int l = 0; l < len; l++) {
-        // the incoming data will be read in a large stream, and there are 
+        // the incoming data will be read in a large stream, and there are
         // l chunks of size chunk_size
         int base = l * CHUNK_SIZE;
         wsg_data w;
@@ -154,7 +154,6 @@ std::vector<wsg_data> WSG_MEM::interpret_read_data(std::vector<uint8_t>& rx_data
                 wsg |= ((uint16_t)rx_data[ij] << ((1 - j) * 8));
             }
             w.wsgs[i] = wsg;
-
         }
         wsgs[l] = w;
     }
@@ -166,7 +165,7 @@ std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<u
 {
     //
     // means each is 8 bytes + 3 * 4 = 20 bytes or 128 bits
-    
+
     // ESP_LOGI(TAG, "Current time: %llu", timestamp);
     std::vector<uint8_t> output(CHUNK_SIZE);
 
@@ -176,7 +175,8 @@ std::vector<uint8_t> WSG_MEM::format_send_data(uint64_t timestamp, std::vector<u
         // std::string s = std::format("{:x}", output[i]);
     }
 
-    ESP_LOGI(TAG, "ts data: %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x", output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
+    ESP_LOGI(TAG, "ts data: %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x", output[0], output[1], output[2], output[3],
+             output[4], output[5], output[6], output[7]);
 
     // splitting wsg data
     for (int i = 0; i < 3; i++) {
@@ -285,13 +285,9 @@ void WSG_MEM::interpret_meta_data(std::vector<uint8_t>& rx_data)
     }
 }
 
-uint32_t WSG_MEM::get_last_page() {
-    return last_page;
-}
+uint32_t WSG_MEM::get_last_page() { return last_page; }
 
-uint16_t WSG_MEM::get_last_column() {
-    return last_column;
-}
+uint16_t WSG_MEM::get_last_column() { return last_column; }
 
 esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
 {
@@ -320,7 +316,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     ESP_LOGI(TAG, "Reading metadata");
     ret = read_meta(metadata);
 
-    meta_initialized = !meta_empty(metadata);
+    meta_initialized = !page_empty(metadata, METADATA_SIZE);
     if (!meta_initialized) {
         ESP_LOGI(TAG, "Initializing meta");
         init_meta(FIRST_PAGE, 0, wsg_id, dac_bias);
