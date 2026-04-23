@@ -102,7 +102,7 @@ extern "C" void app_main(void) {
     // }
     // xTaskCreatePinnedToCore(vTaskDataProcessing, "data processing thread", (1 << 16), NULL, 3, &data_read_handle, (UBaseType_t)1);
     start_client_timesync_loop();
-    // taskYIELD();
+    taskYIELD();
     ESP_LOGI(TAG, "Finished sync");
     // if (msg->payload_len == 1 && msg->payload[0] == 0x08) {
     //     free(msg);
@@ -221,9 +221,10 @@ void vTaskDataProcessing(void* pvParameter)
             serialize_msg_and_publish(udp_data_buf);
             array_ct = 0;
         }
+
 #endif
-        // vTaskDelay(pdMS_TO_TICKS(100));
         delete sample;
+        // taskYIELD();
         // esp_task_wdt_reset();
     }
 }

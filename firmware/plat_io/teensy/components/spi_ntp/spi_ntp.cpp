@@ -99,7 +99,7 @@ int32_t NTPviaSPI::sync()
         Serial.printf("%d ", ret_buf[6]);
         Serial.printf("%d\n", ret_buf[7]);
         attempts++;
-        delay(2000);
+        // delay(2000);
     } while (ret_buf[0] != 0x01 && attempts < MAX_ATTEMPTS);
 
     Serial.printf("attempts: %d\n", attempts);

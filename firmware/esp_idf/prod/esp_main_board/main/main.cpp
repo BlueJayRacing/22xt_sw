@@ -209,7 +209,7 @@ void wsg_read_pass(void * pvParams)
         if (data[0] == 0x88) {
             spi_sync.sync();
         }
-        // vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskDelay(5);
 #endif
         delete msg;
     }

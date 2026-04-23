@@ -6,7 +6,6 @@ static const char* TAG = "udp_server";
 
 ESP_EVENT_DEFINE_BASE(SENDER_EVENT_BASE);
 
-
 uint64_t get_timestamp() {
     struct timeval time;
     gettimeofday(&time, NULL);
@@ -171,7 +170,7 @@ esp_err_t UdpServer::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     msg.payload_len = buff_size;
 
     ESP_LOGI(TAG, "ESP INFO BUF SIZE %d, %d", buf.size(), msg.payload_len);
-    msg->addr = dest_addr;
+    msg.addr = dest_addr;
     
     err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, &msg, sizeof(Message), 5);
     if(err != ESP_OK)
@@ -248,6 +247,7 @@ void UdpServer::udpListenerWorker(void * pvParamter) {
                 delete msg;
             }
 
+            taskYIELD();
             // std::fill_n(buf, 20, 0);
         }
 

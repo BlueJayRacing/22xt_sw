@@ -67,6 +67,8 @@ void process() {
                 util::Debug::info(F("Sample 2: ") + String(wsg.sample[1]));
                 util::Debug::info(F("Sample 3: ") + String(wsg.sample[2]));
             }
+        } else {
+            want_to_start_sync = false;
         }
     } else {
         sync_handler.sync();

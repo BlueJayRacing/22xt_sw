@@ -83,6 +83,9 @@ int SpiWsgRecv::recv(std::array<wsg_data_t, MESSAGES_PER_DATA_SEND> * msg_buf, b
         digitalWrite(cs_pin, HIGH);
 
         uint8_t * data_start = ret_buf.data();
+
+        if (ret_buf[0] == 0xff) return -1;
+
         for (int i = 0; i < MESSAGES_PER_DATA_SEND; i++) {
             (*msg_buf)[i] = deserialize_message(data_start);
             data_start += SERIALIZED_MSG_SIZE;

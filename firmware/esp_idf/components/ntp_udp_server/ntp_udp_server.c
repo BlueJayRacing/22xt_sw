@@ -116,12 +116,13 @@ static void udp_server_task(void* pvParameters)
                 gettimeofday(&sent_time, NULL);
                 ESP_LOGI(TAG, "Seconds: %lld, Microseconds: %lld", (int64_t)sent_time.tv_sec,
                          (int64_t)sent_time.tv_usec);
-                taskYIELD();
+                vTaskDelay(pdMS_TO_TICKS(10000));
+
             } else {
                 ESP_LOGI(TAG, "Did not received data");
+                vTaskDelay(100);
             }
             
-            // vTaskDelay(pdMS_TO_TICKS(60000));
 
         }
 
