@@ -18,13 +18,14 @@ void test_meta()
     esp_err_t err = wsg_mem.read_meta(r);
     assert(err == ESP_OK);
 
-    assert(wsg_mem.meta_empty(r));
+    assert(wsg_mem.page_empty(r, METADATA_SIZE));
 
+    wsg_mem.wait_for_ready();
     err = wsg_mem.init_meta(FIRST_PAGE, 0, 1, 32);
     assert(err == ESP_OK);
     // err = wsg_mem.read_meta(r);
     // assert(err == ESP_OK && !wsg_mem.meta_empty(r));
-    
+
     // wsg_mem.interpret_meta_data(r);
     wsg_mem.read_and_interpret_meta();
     assert(wsg_mem.get_last_page() == FIRST_PAGE);
@@ -36,23 +37,24 @@ void test_meta()
 }
 
 // TODO: expand test to test multiples pages;
-void test_write_data() {
+void test_write_data()
+{
     std::vector<uint16_t> strain_data = {1, 2, 3};
 
     // wsg_mem.nuke();
 
     esp_err_t err;
     int items_written = 0;
-    
+
     // PAGE_SIZE / CHUNK_SIZE
-    for(int i = 0; i < 1; i++) {
+    for (int i = 0; i < 1; i++) {
         wsg_mem.wait_for_ready();
         err = wsg_mem.indiv_write(i, strain_data);
 
         items_written++;
-        
+
         // increment wsg data
-        for(int j = 0; j < 3; j++)
+        for (int j = 0; j < 3; j++)
             strain_data[j]++;
 
         assert(err == ESP_OK);
@@ -68,9 +70,10 @@ void test_write_data() {
     ESP_LOGI("test_write_data", "num read from page: %d", wsgs.size());
     // assert(wsgs.size() == items_written);
 
-    for(int i = 0; i < items_written; i++) {
+    for (int i = 0; i < items_written; i++) {
         // check that timestamp is correct
-        ESP_LOGI("test_write_data", "Read ts: %llu and data values %u, %u, %u", wsgs[i].time, wsgs[i].wsgs[0], wsgs[i].wsgs[3], wsgs[i].wsgs[2]);
+        ESP_LOGI("test_write_data", "Read ts: %llu and data values %u, %u, %u", wsgs[i].time, wsgs[i].wsgs[0],
+                 wsgs[i].wsgs[3], wsgs[i].wsgs[2]);
         assert(wsgs[i].time == i);
 
         // check that data is correct
@@ -78,10 +81,27 @@ void test_write_data() {
         assert(strain_data[1] == wsgs[i].wsgs[1]);
         assert(strain_data[2] == wsgs[i].wsgs[2]);
 
-        for(int j = 0; j < 3; j++)
+        for (int j = 0; j < 3; j++)
             strain_data[j]++;
     }
+}
 
+// assumes read is working
+void test_write_overflow()
+{
+    std::vector wsgs = {1, 2, 3};
+
+    wsg_mem.set_last_column(2090);
+    assert(wsg_mem.get_last_column() == 2090);
+
+    uint32_t page = wsg_mem.get_last_page();
+
+    wsg_mem.indiv_write(1, wsgs);
+
+    assert(page + 1 == wsg_mem.get_last_page());
+
+    assert(wsg_mem.page_empty(page, PAGE_SIZE));
+    assert(!wsg_mem.page_empty(page + 1, PAGE_SIZE));
 }
 // void test_write_column(WSG_MEM& w)
 // {
@@ -122,9 +142,9 @@ extern "C" void app_main(void)
 {
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
-    spi_cfg.mosi_io_num   = GPIO_NUM_18;//9;
-    spi_cfg.miso_io_num   = GPIO_NUM_20;//8;
-    spi_cfg.sclk_io_num   = GPIO_NUM_19;//7;
+    spi_cfg.mosi_io_num   = GPIO_NUM_18; // 9;
+    spi_cfg.miso_io_num   = GPIO_NUM_20; // 8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_19; // 7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
@@ -134,12 +154,10 @@ extern "C" void app_main(void)
         return;
     }
 
-    w25n04kv_init_param_t flash_params = {
-        .cs_pin = GPIO_NUM_1,//,
-        .wp_pin = GPIO_NUM_NC,
-        .spi_host = SPI2_HOST
-    };
-    
+    w25n04kv_init_param_t flash_params = {.cs_pin   = GPIO_NUM_1, //,
+                                          .wp_pin   = GPIO_NUM_NC,
+                                          .spi_host = SPI2_HOST};
+
     wsg_mem.init(flash_params);
     wsg_mem.nuke();
     test_meta();

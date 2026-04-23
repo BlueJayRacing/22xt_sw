@@ -2,8 +2,8 @@
 #include "esp_check.h"
 #include "esp_event.h"
 #include "w25n04kv.hpp"
-#include <inttypes.h>
 #include <array>
+#include <inttypes.h>
 
 #define SPI2_MOSI_PIN         18
 #define SPI2_MISO_PIN         20
@@ -11,10 +11,10 @@
 #define METADATA_UPDATE_INT   5
 #define CHUNK_SIZE            14 // 8 bytes for time + 6 bytes for wsg
 #define PAGE_COLUMN_META_SIZE 6  // size for page and column metadata
-#define METADATA_SIZE         9 // 6 for page/column + 1 for id + 2 for dac bias
+#define METADATA_SIZE         9  // 6 for page/column + 1 for id + 2 for dac bias
 #define META_PAGE             0
 #define FIRST_PAGE            2
-#define PAGE_SIZE 2176-64
+#define PAGE_SIZE             2176 - 64
 
 typedef struct {
     uint64_t time;
@@ -40,11 +40,13 @@ class WSG_MEM {
     void nuke();
     esp_err_t set_dac_bias(uint16_t dac_bias);
     esp_err_t set_wsg_id(uint8_t id);
+    esp_err_t set_last_page(uint32_t page);
+    esp_err_t set_last_column(uint16_t column);
     void interpret_meta_data(std::vector<uint8_t>& rx_data);
     uint32_t get_last_page();
     uint16_t get_last_column();
-    bool meta_empty(std::vector<uint8_t> meta);
-    
+    bool page_empty(std::vector<uint8_t> meta, int page_size);
+
     uint16_t dac_bias;
     uint8_t wsg_id;
 
