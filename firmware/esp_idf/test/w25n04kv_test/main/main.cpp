@@ -3,7 +3,6 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <stdio.h>
-#include <test.hpp>
 
 #include <w25n04kv.hpp>
 
@@ -53,7 +52,7 @@ extern "C" void app_main(void)
     std::vector<uint8_t> tx_data(TEST_LENGTH);
     std::vector<uint8_t> rx_data(TEST_LENGTH);
 
-    std::srand(esp_cpu_get_cycle_count());
+    srand(esp_cpu_get_cycle_count());
 
     for (int i = 0; i < TEST_LENGTH; i++) {
         tx_data.at(i) = rand() % 255;
@@ -73,7 +72,7 @@ extern "C" void app_main(void)
     // gpio_set_level(GPIO_NUM_47, 1);
     while(1) {
         
-       uint32_t page_address = std::rand() % W25N04KV::NUM_PAGES;
+       uint32_t page_address = rand() % W25N04KV::NUM_PAGES;
         // 0xxxxx00
 
         ESP_LOGI(TAG, "Page address: %d", (int)page_address);

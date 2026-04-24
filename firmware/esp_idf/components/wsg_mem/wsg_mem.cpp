@@ -46,12 +46,28 @@ esp_err_t WSG_MEM::wait_for_ready(int timeout)
     return ESP_ERR_TIMEOUT;
 }
 
-bool WSG_MEM::page_empty(std::vector<uint8_t> meta, int page_size)
+bool WSG_MEM::meta_empty(std::vector<uint8_t> meta)
 {
-    for (int i = 0; i < page_size; i++) {
+    for (int i = 0; i < METADATA_SIZE; i++) {
         if (meta[i] != 255) {
             return false;
         }
+    }
+    return true;
+}
+
+bool WSG_MEM::page_empty(uint32_t page, int page_size)
+{
+    std::vector<wsg_data> data = read_wsg_page(page);
+
+    for (int i = 0; i < page_size; i++) {
+        for(int j = 0; j < 3; j++)
+        {
+            if (data[i].wsgs[j] != 255) {
+            return false;
+            }
+        }
+        
     }
     return true;
 }
@@ -60,13 +76,9 @@ esp_err_t WSG_MEM::set_dac_bias(uint16_t dac_bias) { return init_meta(last_page,
 
 esp_err_t WSG_MEM::set_wsg_id(uint8_t id) { return init_meta(last_page, last_column, id, dac_bias); }
 
-void WSG_MEM::set_last_page(uint32_t page) {
-    last_page = page;
-}
+void WSG_MEM::set_last_page(uint32_t page) { last_page = page; }
 
-void WSG_MEM::set_last_col(uint16_t col) {
-    last_column = col;
-}
+void WSG_MEM::set_last_col(uint16_t col) { last_column = col; }
 
 esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_)
 {
@@ -320,7 +332,7 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
     ESP_LOGI(TAG, "Reading metadata");
     ret = read_meta(metadata);
 
-    meta_initialized = !page_empty(metadata, METADATA_SIZE);
+    meta_initialized = !meta_empty(metadata);
     if (!meta_initialized) {
         ESP_LOGI(TAG, "Initializing meta");
         init_meta(FIRST_PAGE, 0, wsg_id, dac_bias);

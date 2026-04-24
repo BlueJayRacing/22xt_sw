@@ -45,7 +45,8 @@ class WSG_MEM {
     void interpret_meta_data(std::vector<uint8_t>& rx_data);
     uint32_t get_last_page();
     uint16_t get_last_column();
-    bool page_empty(std::vector<uint8_t> meta, int page_size);
+    bool meta_empty(std::vector<uint8_t> meta); 
+    bool page_empty(uint32_t page, int page_size);
 
     uint16_t dac_bias;
     uint8_t wsg_id;
