@@ -2,6 +2,8 @@
 #include <esp_log.h>
 #include <esp_system.h>
 #include <test.hpp>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define SPI2_MOSI_PIN 18
 #define SPI2_MISO_PIN 20
@@ -91,8 +93,8 @@ void Test::testReadWriteMemory(void)
         tx_data.at(i) = i;
     }
 
-    std::srand(esp_cpu_get_cycle_count());
-    uint32_t page_address = std::rand() % W25N04KV::NUM_PAGES;
+    srand(esp_cpu_get_cycle_count());
+    uint32_t page_address = rand() % W25N04KV::NUM_PAGES;
 
     assert(spi_flash_.writePage(tx_data, page_address, 0) == ESP_OK);
 
