@@ -18,7 +18,7 @@ void test_meta()
     esp_err_t err = wsg_mem.read_meta(r);
     assert(err == ESP_OK);
 
-    assert(wsg_mem.page_empty(r, METADATA_SIZE));
+    assert(wsg_mem.meta_empty(r));
 
     wsg_mem.wait_for_ready();
     err = wsg_mem.init_meta(FIRST_PAGE, 0, 1, 32);
@@ -89,9 +89,9 @@ void test_write_data()
 // assumes read is working
 void test_write_overflow()
 {
-    std::vector wsgs = {1, 2, 3};
+    std::vector<uint16_t> wsgs = {1, 2, 3};
 
-    wsg_mem.set_last_column(2090);
+    wsg_mem.set_last_col(2090);
     assert(wsg_mem.get_last_column() == 2090);
 
     uint32_t page = wsg_mem.get_last_page();
