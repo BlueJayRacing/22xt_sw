@@ -1,10 +1,10 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32c6"
+    "IDF_TARGET": "esp32s3"
   },
   "idf.openOcdConfigs": [
-    "board/esp32c6-ftdi.cfg"
+    "board/esp32s3-builtin.cfg"
   ],
   "idf.portWin": "COM12",
   "idf.flashType": "UART",
@@ -15,5 +15,5 @@
   "idf.toolsPath": "/home/cyanbrown/.espressif",
   "idf.pythonInstallPath": "/usr/bin/python",
   "idf.currentSetup": "/Users/suhuang/.espressif/v5.5.2/esp-idf",
-  "idf.port": "/dev/tty.usbmodem101"
+  "idf.port": "/dev/ttyACM0"
 }

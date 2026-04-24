@@ -40,8 +40,8 @@ class WSG_MEM {
     void nuke();
     esp_err_t set_dac_bias(uint16_t dac_bias);
     esp_err_t set_wsg_id(uint8_t id);
-    esp_err_t set_last_page(uint32_t page);
-    esp_err_t set_last_column(uint16_t column);
+    void set_last_page(uint32_t page);
+    void set_last_col(uint16_t column);
     void interpret_meta_data(std::vector<uint8_t>& rx_data);
     uint32_t get_last_page();
     uint16_t get_last_column();

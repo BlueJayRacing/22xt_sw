@@ -60,9 +60,13 @@ esp_err_t WSG_MEM::set_dac_bias(uint16_t dac_bias) { return init_meta(last_page,
 
 esp_err_t WSG_MEM::set_wsg_id(uint8_t id) { return init_meta(last_page, last_column, id, dac_bias); }
 
-esp_err_t WSG_MEM::set_last_page(uint32_t page) : last_page(page) {}
+void WSG_MEM::set_last_page(uint32_t page) {
+    last_page = page;
+}
 
-esp_err_t WSG_MEM::set_last_col(uint16_t col) : last_page(page) {}
+void WSG_MEM::set_last_col(uint16_t col) {
+    last_column = col;
+}
 
 esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, uint16_t dac_bias_)
 {
