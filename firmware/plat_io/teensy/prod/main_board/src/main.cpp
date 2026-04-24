@@ -281,7 +281,7 @@ void setup() {
 
     SPI1.begin();
 
-    baja::wsg_streaming::init(&SPI1, 36, 2, esp_spi_settings, sampleBuffer, fastBuffer);
+    baja::wsg_streaming::init(&SPI1, 36, 3, esp_spi_settings, sampleBuffer, fastBuffer);
 
     // Initialize channel configurations
     bool configSuccess = baja::adc::initializeChannelConfigs(
