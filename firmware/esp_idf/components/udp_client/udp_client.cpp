@@ -212,9 +212,11 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
     msg.payload_len = buff_size;
 
     // udp_send_event_handler((void *) this, NULL, 0, (void*)msg);
-    esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, &msg, sizeof(Message), 5);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
+    if(socket_handler_.is_socket_open()) {
+        esp_err_t err = esp_event_post_to(sender_loop_handle, SENDER_EVENT_BASE, SENDER_EVENT_ID, &msg, sizeof(Message), 5);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
+        }
     }
 
     return ESP_OK;

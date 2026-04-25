@@ -91,6 +91,7 @@ esp_err_t driveSensorSetup::init(ads1120_init_param_t adc_params, ad5626_init_pa
 {
     esp_err_t ret = adc_.init(adc_params);
     if (ret) {
+        ESP_LOGE(TAG, "FAILED TO INIT");
         return ret;
     }
 
@@ -122,10 +123,12 @@ esp_err_t driveSensorSetup::measure(bool wait_ready, drive_measurement_t* t_meas
 
     esp_err_t ret = adc_.readADC(&(t_meas->adc_value));
     if (ret) {
+        ESP_LOGI(TAG, "FAILED TO READ ADC");
         return ret;
     }
 
     t_meas->dac_bias = dac_.getLevel();
+    // ESP_LOGE(TAG, "dac bias: %u", t_meas->dac_bias);
 
     ads1120_regs_t regs;
     adc_.getRegs(&regs);
@@ -261,7 +264,19 @@ esp_err_t driveSensorSetup::configure(drive_cfg_t new_cfg)
     case drive_cfg_t::STRAIN_GAUGE_2:
         regs.channels = AIN3_AVSS;
         break;
+    default:
+        regs.channels = AIN0_AVSS;
     }
+
+    regs.idac2_routing = ROUTING_DISABLED;
+    regs.idac1_routing = ROUTING_DISABLED;
+    regs.temp_mode = TEMPMODE_DISABLED;
+    regs.drdy_mode = DRDY_DOUT;
+    regs.pga_bypass = true;
+    regs.burn_sources = true;
+    regs.fir = REJ_60HZ;
+    regs.power_switch = false;
+    regs.idac_current = IDAC_OFF;
 
     switch (new_cfg.mode) {
     case drive_cfg_t::ZEROING_MODE:
@@ -282,6 +297,7 @@ esp_err_t driveSensorSetup::configure(drive_cfg_t new_cfg)
 
     ret = adc_.configure(regs);
     if (ret) {
+        ESP_LOGI(TAG, "FAILED TO CONFIGURE");
         return ret;
     }
 

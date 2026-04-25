@@ -4,6 +4,7 @@ idf_component_register( SRCS "test.cpp"
                             driver
                             esp_system 
                             ads1120
+                            ad5626
                             esp_timer
                             log
                             )

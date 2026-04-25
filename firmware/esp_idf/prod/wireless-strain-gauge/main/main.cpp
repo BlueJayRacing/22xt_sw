@@ -162,12 +162,12 @@ void vTaskDataProcessing(void* pvParameter)
 {
     ESP_LOGI(TAG, "Starting data processing task");
     driveSensorSetup sensors;
-    sensors.init(ads1120_params, ad5626_params);
+    esp_err_t err = sensors.init(ads1120_params, ad5626_params);
 
 #ifdef FLASH_MEM 
     sensors.setDACValue(wsg_mem.dac_bias);
 #else
-    sensors.setDACValue(40000);
+    sensors.setDACValue(0);
     dac_bias = 0x15;
 #endif
 
@@ -193,11 +193,10 @@ void vTaskDataProcessing(void* pvParameter)
         for (int i = 0; i < 3; i++) {
             drive_cfg.channel = SG_CHANNELS[i];
             sensors.configure(drive_cfg);
-            // vTaskDelay(10);
-            sensors.measure(false, &measure);
+            vTaskDelay(5);
+            sensors.measure(true, &measure);
 
             sample->sample[i] = measure.adc_value;
-            // ESP_LOGI(TAG, "Data (%d) %d", i, measure.adc_value);
         }
 
 #ifndef DATA_READ_ONLY
@@ -224,6 +223,7 @@ void vTaskDataProcessing(void* pvParameter)
 
 #endif
         delete sample;
+        // vTaskDelay(pdMS_TO_TICKS(1000));
         // taskYIELD();
         // esp_task_wdt_reset();
     }
