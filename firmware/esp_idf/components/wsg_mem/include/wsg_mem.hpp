@@ -21,6 +21,8 @@ typedef struct {
     std::array<uint16_t, 3> wsgs;
 } wsg_data;
 
+void shift(std::vector<uint8_t>& vec, int n);
+
 class WSG_MEM {
   public:
     WSG_MEM();
@@ -47,7 +49,6 @@ class WSG_MEM {
     uint16_t get_last_column();
     bool meta_empty(std::vector<uint8_t> meta); 
     bool page_empty(uint32_t page, int page_size);
-
     uint16_t dac_bias;
     uint8_t wsg_id;
 

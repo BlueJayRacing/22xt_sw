@@ -247,6 +247,7 @@ std::vector<wsg_data> WSG_MEM::read_wsg_page(uint32_t page_addr)
     return wsgs;
 }
 
+
 // TODO: consider only reading wsg data in chunks anyway
 
 // esp_err_t WSG_MEM::read_all(uint32_t page_addr, uint16_t column_addr, std::array<uint8_t>& rx_data)
@@ -440,3 +441,16 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
 //     return ret;
 // }
 // esp_err_t WSG_MEM::read_and_send() { std::vector<uint8_t> rx_data(W25N04KV::PAGE_SIZE); }
+
+// right shift a vector by some n less than 8
+void shift(std::vector<uint8_t>& vec, int n)
+{
+    if(vec.empty()) return;
+    // attempting an O(n) without any additional memory usage
+    for(int i = vec.size()-1; i > 0; i--)
+    {
+        // get previous element and shift by 3
+        vec[i] = vec[i] >> n | vec[i-1] << (8-n);
+    }
+    vec[0] = vec[0] >> n;
+}
