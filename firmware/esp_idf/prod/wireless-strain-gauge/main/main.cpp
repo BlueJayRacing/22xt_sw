@@ -193,7 +193,7 @@ void vTaskDataProcessing(void* pvParameter)
         for (int i = 0; i < 3; i++) {
             drive_cfg.channel = SG_CHANNELS[i];
             sensors.configure(drive_cfg);
-            vTaskDelay(5);
+            // vTaskDelay(5);
             sensors.measure(true, &measure);
 
             sample->sample[i] = measure.adc_value;
@@ -223,7 +223,7 @@ void vTaskDataProcessing(void* pvParameter)
 
 #endif
         delete sample;
-        // vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskDelay(pdMS_TO_TICKS(5));
         // taskYIELD();
         // esp_task_wdt_reset();
     }

@@ -185,6 +185,7 @@ void wsg_read_pass(void * pvParams)
 #ifndef NO_TEENSY
         memset(sendbuf, 0, SPI_SIZE);
         memcpy(sendbuf, msg->payload.data(), SPI_SIZE < msg->payload_len ? SPI_SIZE : msg->payload_len);
+
         spi_slave_transaction_t wsg_trans = {};
         wsg_trans.length = SPI_SIZE << 3;
         wsg_trans.tx_buffer = sendbuf;
@@ -192,7 +193,7 @@ void wsg_read_pass(void * pvParams)
 
         // for (int i = 0; i < SPI_SIZE; i++) {
         //     ESP_LOGI(TAG, "Byte %d: %d", i, ((uint8_t *) wsg_trans.tx_buffer)[i]);
-        //     assert(((uint8_t *) wsg_trans.tx_buffer)[i] == 1);
+        //     // assert(((uint8_t *) wsg_trans.tx_buffer)[i] == 1);
         // }
 
         spi_slave_queue_trans(spi_host, &wsg_trans, portMAX_DELAY);
@@ -209,7 +210,7 @@ void wsg_read_pass(void * pvParams)
         if (data[0] == 0x88) {
             spi_sync.sync();
         }
-        // vTaskDelay(5);
+        vTaskDelay(5);
 #endif
         delete msg;
     }

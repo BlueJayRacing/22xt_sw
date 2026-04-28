@@ -217,6 +217,9 @@ esp_err_t UdpClient::publish_data(uint64_t timestamp_, std::array<uint8_t, MESSA
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to post to sender event loop, err: %s", esp_err_to_name(err));
         }
+    } else {
+        socket_handler_.restart();
+        ESP_LOGW(TAG, "socket is not connected");
     }
 
     return ESP_OK;

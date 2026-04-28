@@ -14,7 +14,7 @@ static int total_sample_count = 0;
 static bool started_sync = false;
 
 static int count = 0;
-static int sync_rate = 1000;
+static int sync_rate = 10;
 
 static bool override_sync = false;
 

@@ -62,7 +62,7 @@ uint32_t samplesProcessedTotal = 0;
 uint32_t startTime = 0;
 uint32_t lastSampleCount = 0;
 
-SPISettings esp_spi_settings(5000000, MSBFIRST, SPI_MODE0);
+SPISettings esp_spi_settings(1000000, MSBFIRST, SPI_MODE1);
 // SpiWsgRecv recv_wsg(&SPI1, 36, esp_spi_settings);
 
 // Global system state variables for Status LED

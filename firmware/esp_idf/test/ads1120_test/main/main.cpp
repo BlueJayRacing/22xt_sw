@@ -10,6 +10,8 @@ static const char* TAG = "main";
 
 extern "C" void app_main(void)
 {
-    Test test(ESP_LOG_VERBOSE);
-    test.testADS1120();
+    while(1) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        ESP_LOGI(TAG, "ALIVE");
+    }
 }

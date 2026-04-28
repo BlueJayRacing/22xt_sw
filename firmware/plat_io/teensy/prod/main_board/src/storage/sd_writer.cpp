@@ -548,7 +548,7 @@ bool SDWriter::writeSampleToRingBuf(const data::ChannelSample& sample) {
         };
 
         // Convert and write the timestamp
-        if (sample.timestamp == 0) util::Debug::info("TIMESTAMP OF 0 WTH: " + String(sample.internalChannelId));
+        if (sample.timestamp == 0) return false;
         size_t n = u64_to_str(sample.timestamp, buffer + pos, remaining);
         pos += n;
         remaining = sizeof(buffer) - pos;

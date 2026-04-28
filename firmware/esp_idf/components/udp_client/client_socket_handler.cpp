@@ -103,6 +103,11 @@ int SocketHandler::recv(Message * msg) {
     return len;
 }
 
+void SocketHandler::restart() {
+    close_sock();
+    partial_socket_init();
+}
+
 void SocketHandler::close_sock() {
     if (sock != -1) {
         ESP_LOGE(TAG, "Shutting down socket and restarting...");

@@ -114,7 +114,7 @@ NTPviaSPI::NTPviaSPI(spi_host_device_t host) : spi_host(host)
 
     slave_config.flags         = 0;
     slave_config.queue_size    = 4;
-    slave_config.mode          = 0;
+    slave_config.mode          = 1;
     slave_config.post_setup_cb = recv_time;
     slave_config.post_trans_cb = my_post_trans_cb;
 
