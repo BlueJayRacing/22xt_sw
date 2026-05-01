@@ -25,8 +25,8 @@ esp_err_t W25N04KV::init(w25n04kv_init_param_t t_init_param)
     spi_device_interface_config_t spi_device_cfg;
     memset(&spi_device_cfg, 0, sizeof(spi_device_interface_config_t));
 
-    spi_device_cfg.mode           = 3;
-    spi_device_cfg.clock_speed_hz = 1000000;
+    spi_device_cfg.mode           = 0;
+    spi_device_cfg.clock_speed_hz = 10000000;
     spi_device_cfg.spics_io_num   = t_init_param.cs_pin;
     spi_device_cfg.flags          = SPI_DEVICE_HALFDUPLEX;
     spi_device_cfg.queue_size     = 1;
@@ -180,7 +180,7 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
     // ESP_LOGI(TAG, "From write page");
 
     // printStatusReg();
-    printStatusReg();
+    // printStatusReg();
 
     std::vector<uint8_t> dummy_rx;
     // uint64_t block_addr = (uint64_t)(page_address & PADDR_SIZE) << 12 | (uint64_t)(column_address & CADDR_SIZE);
@@ -193,14 +193,27 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
         return ret;
     }
 
-    ret = enableWrite();
+    return ret;
+    // ret = enableWrite();
+    // if (ret != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to enable write: %d", ret);
+    //     return ret;
+    // }
+    // // vTaskDelay(50);
+    // // printStatusReg();
+    // return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_address, 24);
+}
+
+esp_err_t W25N04KV::writeExecute(uint32_t page_addr) {
+    ESP_LOGI(TAG, "STARTING WRITE EXEC ON PAGE ADDR %u", page_addr);
+    esp_err_t ret = enableWrite();
+    std::vector<uint8_t> dummy_rx;
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to enable write: %d", ret);
         return ret;
     }
-    // vTaskDelay(50);
-    // printStatusReg();
-    return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_address, 24);
+
+    return transfer(W25N04KV_OP_CODE_DATA_EXECUTE, dummy_rx, page_addr, 24);
 }
 
 // esp_err_t W25N04KV::loadPage(uint32_t page_address) {
@@ -239,7 +252,7 @@ esp_err_t W25N04KV::readStatus(w25n04kv_device_status_t* device_status)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Value of read status register: %02x", (uint8_t)rx_data[0]);
+    // ESP_LOGI(TAG, "Value of read status register: %02x", (uint8_t)rx_data[0]);
 
     device_status->ecc_status      = w25n04kv_ecc_status_t((rx_data[0] >> 4) & 0x03);
     device_status->program_failure = rx_data[0] & 0x08;
@@ -352,6 +365,7 @@ esp_err_t W25N04KV::wait_for_ready() {
     w25n04kv_device_status_t status;
     do {
         esp_err_t err = readStatus(&status);
+        vTaskDelay(2);
         if (err != ESP_OK) return err;
     } while (status.is_busy);
 

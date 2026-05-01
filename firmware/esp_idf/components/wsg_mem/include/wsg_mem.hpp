@@ -13,12 +13,13 @@
 #define PAGE_COLUMN_META_SIZE 6  // size for page and column metadata
 #define METADATA_SIZE         9  // 6 for page/column + 1 for id + 2 for dac bias
 #define META_PAGE             0
-#define FIRST_PAGE            2
-#define PAGE_SIZE             2176 - 64
+#define FIRST_PAGE            64
+#define NUM_PAGES             131072
+#define PAGE_SIZE             2048
 
 typedef struct {
     uint64_t time;
-    std::array<uint16_t, 3> wsgs;
+    std::array<uint16_t, 3> wsgs = {0};
 } wsg_data;
 
 void shift(std::vector<uint8_t>& vec, int n);
@@ -51,6 +52,10 @@ class WSG_MEM {
     bool page_empty(uint32_t page, int page_size);
     uint16_t dac_bias;
     uint8_t wsg_id;
+
+    void erase_all_flash();
+    void flash_write_exec();
+    esp_err_t flash_erase_block(uint32_t pageaddr);
 
   private:
     uint8_t block_size = (1 << 6);
