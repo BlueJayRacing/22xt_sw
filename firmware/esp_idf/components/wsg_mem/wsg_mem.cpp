@@ -86,6 +86,9 @@ esp_err_t WSG_MEM::init_meta(uint32_t page, uint16_t column, uint8_t wsg_id_, ui
 
     // set ID and DAC bias
     ESP_LOGI(TAG, "id: %u", wsg_id_);
+    ESP_LOGI(TAG, "page: %u", last_page);
+    ESP_LOGI(TAG, "col: %u", last_column);
+    ESP_LOGI(TAG, "dac bias %u", dac_bias);
     tx_data[PAGE_COLUMN_META_SIZE] = wsg_id_;
 
     for (int i = 0; i < 2; i++) {
@@ -244,8 +247,9 @@ std::vector<wsg_data> WSG_MEM::read_wsg_page(uint32_t page_addr)
 
 
 void WSG_MEM::erase_all_flash() {
-    for(uint32_t i = 64; i < NUM_PAGES; i += 1) {
+    for(uint32_t i = 64; i < NUM_PAGES; i += 64) {
         spi_flash_.eraseBlock(i);
+        // vTaskDelay(1);
     }
 }
 
@@ -342,9 +346,9 @@ esp_err_t WSG_MEM::read_and_interpret_meta()
         read_meta(metadata);
     }
 
-    for (int i = 0; i < METADATA_SIZE; i++) {
-        ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
-    }
+    // for (int i = 0; i < METADATA_SIZE; i++) {
+    //     ESP_LOGI(TAG, "Read metadata %d", metadata[i]);
+    // }
 
     interpret_meta_data(metadata);
     ESP_LOGI(TAG, "Metadata: Page address: %u, Column address: %u", last_page, last_column);

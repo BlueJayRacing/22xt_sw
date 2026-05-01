@@ -219,16 +219,16 @@ extern "C" void app_main(void)
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
-    spi_cfg.mosi_io_num   = GPIO_NUM_18;//9;
-    spi_cfg.miso_io_num   = GPIO_NUM_20;//8;
-    spi_cfg.sclk_io_num   = GPIO_NUM_19;//7;
+    spi_cfg.mosi_io_num   = GPIO_NUM_9;//18;//9;
+    spi_cfg.miso_io_num   = GPIO_NUM_8;//20;//8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_7;//19;//7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
     spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO);
 
     w25n04kv_init_param_t flash_init_params;
-    flash_init_params.cs_pin   = GPIO_NUM_1;//26;
+    flash_init_params.cs_pin   = GPIO_NUM_34;//1;//26;
     flash_init_params.wp_pin   = GPIO_NUM_NC;
     flash_init_params.spi_host = SPI2_HOST;
 

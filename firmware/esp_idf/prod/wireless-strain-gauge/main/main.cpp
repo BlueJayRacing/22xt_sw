@@ -13,6 +13,7 @@
 // #define DATA_READ_ONLY true
 // #define FLASH_MEM true
 #define USE_UDP true
+#define FLASH_MEM true
 
 static const char* TAG                           = "main";
 static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1,
@@ -67,7 +68,7 @@ extern "C" void app_main(void) {
 #ifndef DATA_READ_ONLY
 #ifdef FLASH_MEM
     w25n04kv_init_param_t flash_params = {
-        .cs_pin = GPIO_NUM_41,
+        .cs_pin = GPIO_NUM_34,
         .wp_pin = GPIO_NUM_NC,
         .spi_host = SPI2_HOST
     };

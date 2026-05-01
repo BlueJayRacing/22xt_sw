@@ -92,7 +92,7 @@ esp_err_t W25N04KV::transfer(const uint8_t op_code, std::vector<uint8_t>& rx_dat
                              const uint8_t address_length = 0, const uint8_t dummy_byte_len = 0,
                              const std::vector<uint8_t>& tx_data = std::vector<uint8_t>(0))
 {
-    spi_transaction_ext_t ext_t;
+    spi_transaction_ext_t ext_t = {};
     ext_t.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
     // Set Length of Command, Address, and Dummy Bits
     ext_t.command_bits = 8;
@@ -309,7 +309,7 @@ esp_err_t W25N04KV::isCorrectDevice(void)
 {
     std::vector<uint8_t> rx_data(3, 0);
 
-    esp_err_t ret = transfer(W25N04KV_OP_CODE_JEDEC_ID, rx_data, 0, 0, 9);
+    esp_err_t ret = transfer(W25N04KV_OP_CODE_JEDEC_ID, rx_data, 0, 0, 8);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read JEDEC ID: %d", ret);
         return ret;
