@@ -246,11 +246,11 @@ void vTaskFlashWrite(void* pvParameter)
             if (sample != nullptr) {
                 std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
                 wsg_mem.indiv_write(sample->timestamp, buf);
+                delete sample;
             }
         }
 
         xTaskNotifyGiveIndexed(data_read_handle, sem_val);
-        // esp_task_wdt_reset();
         taskYIELD();
     }
 }

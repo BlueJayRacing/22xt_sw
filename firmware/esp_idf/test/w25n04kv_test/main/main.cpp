@@ -73,7 +73,7 @@ extern "C" void app_main(void)
     // spi_flash_.eraseBlock(1200);
     // while(1) {
         
-       uint32_t page_address = 1200;//rand() % W25N04KV::NUM_PAGES;
+       uint32_t page_address = 0;//rand() % W25N04KV::NUM_PAGES;
         // 0xxxxx00
 
         ESP_LOGI(TAG, "Page address: %d", (int)page_address);

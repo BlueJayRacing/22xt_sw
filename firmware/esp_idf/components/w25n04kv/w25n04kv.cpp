@@ -185,7 +185,8 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
     std::vector<uint8_t> dummy_rx;
     // uint64_t block_addr = (uint64_t)(page_address & PADDR_SIZE) << 12 | (uint64_t)(column_address & CADDR_SIZE);
     // beautiful and correct code that serves literally no purpose :()
-    vTaskDelay(10);
+    // vTaskDelay(10);
+    wait_for_ready();
 
     ret = transfer(W25N04KV_OP_CODE_DATA_LOAD, dummy_rx, column_address, 16, 0, tx_data);
     if (ret != ESP_OK) {

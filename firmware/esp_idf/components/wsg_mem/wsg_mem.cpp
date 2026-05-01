@@ -126,7 +126,7 @@ esp_err_t WSG_MEM::init(w25n04kv_init_param_t flash)
     // dac_bias = dac_bias_;
 
     // meta data initialization
-    // ret = read_and_interpret_meta();
+    ret = read_and_interpret_meta();
 
     data_count = 0;
 
@@ -214,7 +214,7 @@ esp_err_t WSG_MEM::write(uint64_t timestamp, std::vector<uint16_t>& wsgs, uint32
     //     //  ESP_LOGI(TAG, "Data in hex %s", s.c_str());
     //     ESP_LOGI(TAG, "page: %lu, column: %lu, Write data %02x", page_addr, column_addr, tx_data[i]);
     // }
-    wait_for_ready();
+    // wait_for_ready();
     // vTaskDelay(50);
     esp_err_t ret = spi_flash_.writePage(tx_data, page_addr, column_addr);
 
@@ -244,7 +244,7 @@ std::vector<wsg_data> WSG_MEM::read_wsg_page(uint32_t page_addr)
 
 
 void WSG_MEM::erase_all_flash() {
-    for(uint32_t i = 0; i < NUM_PAGES; i += 64 * PAGE_SIZE) {
+    for(uint32_t i = 64; i < NUM_PAGES; i += 1) {
         spi_flash_.eraseBlock(i);
     }
 }
@@ -316,6 +316,7 @@ esp_err_t WSG_MEM::update_meta(uint32_t page_addr, uint16_t column_addr)
 esp_err_t WSG_MEM::read_meta(std::vector<uint8_t>& rx_data)
 {
     // vTaskDelay(10);
+    wait_for_ready();
     esp_err_t ret = spi_flash_.readPage(rx_data, META_PAGE, 0);
     // for (uint8_t i : rx_data) {
     //     ESP_LOGI(TAG, "Hi: %u", i);
@@ -404,7 +405,7 @@ esp_err_t WSG_MEM::indiv_write(uint64_t timestamp, std::vector<uint16_t>& wsgs)
         spi_flash_.writeExecute(last_page);
         last_page++;
         last_column = 0;
-        ESP_LOGI(TAG, "Incremented Page: %0x", last_page);
+        ESP_LOGI(TAG, "Incremented Page: %u", last_page);
         ESP_LOGI(TAG, "Updating metadata");
         update_meta(last_page, last_column);
         vTaskDelay(10);

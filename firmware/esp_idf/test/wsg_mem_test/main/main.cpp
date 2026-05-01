@@ -12,9 +12,14 @@ void nuke(WSG_MEM& w) { w.nuke(); }
 
 void test_meta(WSG_MEM& wsg_mem)
 {
+    wsg_mem.nuke();
     std::vector<uint8_t> r(METADATA_SIZE);
     esp_err_t err = wsg_mem.read_meta(r);
     assert(err == ESP_OK);
+
+    for ( int i = 0; i < METADATA_SIZE; i++) {
+        ESP_LOGI(TAG, "%d, %u", i, r[i]);
+    }
 
     assert(wsg_mem.meta_empty(r));
 
@@ -37,7 +42,7 @@ void test_meta(WSG_MEM& wsg_mem)
 // TODO: expand test to test multiples pages;
 void test_write_data_page(WSG_MEM& wsg_mem)
 {
-    std::vector<uint16_t> strain_data = {1, 2, 3};
+    std::vector<uint16_t> strain_data = {1, 1<<8, 1<<13};
 
     // wsg_mem.nuke();
 
@@ -64,9 +69,9 @@ void test_write_data_page(WSG_MEM& wsg_mem)
 
     // ESP_LOGI("test_write_data", "Wrote %d items to flash at page: %d", items_written, wsg_mem.get_last_page());
 
-    for (int k = 0; k < 3; k++) {
-        strain_data[k] = k + 1;
-    }
+    strain_data[0] = 1;
+    strain_data[1] = 1<<8;
+    strain_data[2] = 1<<13;
 
     vTaskDelay(100);
     wsg_mem.wait_for_ready();
@@ -93,8 +98,8 @@ void test_write_data_page(WSG_MEM& wsg_mem)
     ESP_LOGI(TAG, "PASSED PAGE WRITE TEST");
 }
 
-void test_multi_page_write(WSG_MEM& wsg_mem) {
-    std::vector<uint16_t> strain_data = {(1<<8) + 1, (1<<8) + 2, (1<<8) + 3};
+void test_multi_page_write(WSG_MEM& wsg_mem, int num_pages) {
+    std::vector<uint16_t> strain_data = {1, 1<<8, 1<<14};
 
     // wsg_mem.nuke();
 
@@ -105,9 +110,9 @@ void test_multi_page_write(WSG_MEM& wsg_mem) {
     uint16_t start_col = wsg_mem.get_last_column();
 
     // PAGE_SIZE / CHUNK_SIZE
-    for (uint64_t i = 0; i < (PAGE_SIZE / CHUNK_SIZE) * 2; i++) {
+    for (uint64_t i = 0; i < (PAGE_SIZE / CHUNK_SIZE) * num_pages; i++) {
         // wsg_mem.wait_for_ready();
-        err = wsg_mem.indiv_write(i<<32, strain_data);
+        err = wsg_mem.indiv_write(i<<35, strain_data);
 
         items_written++;
 
@@ -124,9 +129,9 @@ void test_multi_page_write(WSG_MEM& wsg_mem) {
 
     // assert(wsg_mem.get_last_page() == start_page + 10);
 
-    for (int k = 0; k < 3; k++) {
-        strain_data[k] = (1<<8) + k + 1;
-    }
+    strain_data[0] = 1;
+    strain_data[1] = 1<<8;
+    strain_data[2] = 1<<14;
 
     for (uint32_t page = start_page; page <= wsg_mem.get_last_page(); page++) {
         vTaskDelay(100);
@@ -137,9 +142,9 @@ void test_multi_page_write(WSG_MEM& wsg_mem) {
 
         for (uint64_t i = 0; i < PAGE_SIZE / CHUNK_SIZE; i++) {
             // check that timestamp is correct
-            ESP_LOGI("test_write_data", "Read %d ts: %llu and data values %u, %u, %u", i, wsgs[i].time, wsgs[i].wsgs[0],
+            ESP_LOGI("test_write_data", "Read %llu ts: %llu and data values %u, %u, %u", i, wsgs[i].time, wsgs[i].wsgs[0],
                     wsgs[i].wsgs[1], wsgs[i].wsgs[2]);
-            assert(wsgs[i].time == (i + (page - start_page) * (PAGE_SIZE / CHUNK_SIZE))<<32);
+            assert(wsgs[i].time == (i + (page - start_page) * (PAGE_SIZE / CHUNK_SIZE))<<35);
 
             // // check that data is correct
             // ESP_LOGI(TAG, "SD0: %u, %u", strain_data[0], wsgs[i].wsgs[0]);
@@ -236,6 +241,6 @@ extern "C" void app_main(void)
 
     wsg_mem.erase_all_flash();
     test_meta(wsg_mem);
-    test_multi_page_write(wsg_mem);
+    test_multi_page_write(wsg_mem, 5);
     test_write_data_page(wsg_mem);
 }
