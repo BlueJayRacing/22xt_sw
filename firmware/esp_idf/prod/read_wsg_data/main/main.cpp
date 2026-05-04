@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <stdio.h>
@@ -37,7 +36,7 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "WSG ID: %d", wsg_mem.wsg_id);
     ESP_LOGI(TAG, "DAC BIAS: %u", wsg_mem.dac_bias);
-    ESP_LOGI(TAG, "LAST PAGE: %u", wsg_mem.get_last_page());
+    ESP_LOGI(TAG, "LAST PAGE: %lu", wsg_mem.get_last_page());
     ESP_LOGI(TAG, "LAST COL: %u", wsg_mem.get_last_column());
 
     for (uint32_t page = START_PAGE; page <= wsg_mem.get_last_page(); page++) {
@@ -46,6 +45,6 @@ extern "C" void app_main(void)
         std::vector<wsg_data> wsgs = wsg_mem.read_wsg_page(page);
 
         for (int i = 0; i < PAGE_SIZE / CHUNK_SIZE; i++)
-            ESP_LOGI(TAG, "Read page %u ts: %llu and data values %u, %u, %u", page, wsgs[i].time, wsgs[i].wsgs[0], wsgs[i].wsgs[1], wsgs[i].wsgs[2]);
+            ESP_LOGI(TAG, "Read page %lu ts: %llu and data values %u, %u, %u", page, wsgs[i].time, wsgs[i].wsgs[0], wsgs[i].wsgs[1], wsgs[i].wsgs[2]);
     }
 }
