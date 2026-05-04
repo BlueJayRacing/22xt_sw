@@ -19,7 +19,7 @@ static const char* TAG                           = "main";
 static const drive_cfg::channel_t SG_CHANNELS[3] = {drive_cfg_t::STRAIN_GAUGE_0, drive_cfg_t::STRAIN_GAUGE_1,
                                                     drive_cfg_t::STRAIN_GAUGE_2};
 
-QueueHandle_t flash_mem_q;
+QueueHandle_t flash_mem_q = NULL;
 TaskHandle_t write_handle;
 TaskHandle_t data_read_handle;
 UBaseType_t sem_val = 1;
@@ -67,6 +67,7 @@ extern "C" void app_main(void) {
 
 #ifndef DATA_READ_ONLY
 #ifdef FLASH_MEM
+    ESP_LOGI(TAG, "Initializing the flash mem");
     w25n04kv_init_param_t flash_params = {
         .cs_pin = GPIO_NUM_34,
         .wp_pin = GPIO_NUM_NC,
@@ -77,6 +78,11 @@ extern "C" void app_main(void) {
 
     // start data queue for flash
     flash_mem_q = xQueueCreate(10, sizeof(wsg_data_t*));
+
+    if (flash_mem_q == NULL) {
+        ESP_LOGE(TAG, "Failed to create queue");
+    }
+
 #endif
 
     // connect to wifi
@@ -110,7 +116,7 @@ extern "C" void app_main(void) {
 
 #ifdef FLASH_MEM
         // start tasks
-        xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 3, &write_handle, (UBaseType_t)0);
+        // xTaskCreatePinnedToCore(vTaskFlashWrite, "flash memory write thread", (1 << 16), NULL, 3, &write_handle, (UBaseType_t)0);
 #endif
 #endif
         ESP_LOGI(TAG, "STARTED SYNC");
@@ -201,20 +207,10 @@ void vTaskDataProcessing(void* pvParameter)
         }
 
 #ifndef DATA_READ_ONLY
-#ifdef FLASH_MEM
-        if (xQueueSend(flash_mem_q, sample, 0) != pdPASS) {
-            delete sample;
-            ESP_LOGW(TAG, "failed to add sample to flash mem queue");
-        }
 
-        if (!uxQueueSpacesAvailable(flash_mem_q)) {
-            // Notify the writer to do the writing
-            xTaskNotifyGiveIndexed(write_handle, sem_val);
-        }
-#endif
-
-        // Pass data to the mainboard
+        // // Pass data to the mainboard
         udp_data_buf[array_ct] = *sample;
+        ESP_LOGI(TAG, "DATA IN BUF: %d", udp_data_buf[array_ct].wsg_id);
         array_ct++;
 
         if (array_ct == 6) {
@@ -222,8 +218,21 @@ void vTaskDataProcessing(void* pvParameter)
             array_ct = 0;
         }
 
+        // delete sample;
+#ifdef FLASH_MEM
+        if (xQueueSend(flash_mem_q, (void*)&sample, 0) != pdPASS) {
+            delete sample;
+            ESP_LOGW(TAG, "failed to add sample to flash mem queue");
+        }
+
+        if (!uxQueueSpacesAvailable(flash_mem_q)) {
+            // Notify the writer to do the writing
+            // xTaskNotifyGiveIndexed(write_handle, sem_val);
+            vTaskFlashWrite(NULL);
+        }
 #endif
-        delete sample;
+
+#endif
         // vTaskDelay(pdMS_TO_TICKS(5));
         // taskYIELD();
         // esp_task_wdt_reset();
@@ -234,26 +243,27 @@ void vTaskDataProcessing(void* pvParameter)
 // task to write for flash
 void vTaskFlashWrite(void* pvParameter)
 {
-    while (1) {
-        uint32_t notif_val = ulTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY);
-        if (notif_val != 1) {
-            continue;
-        }
+    // while (1) {
+    //     uint32_t notif_val = ulTaskNotifyTakeIndexed(sem_val, pdTRUE, portMAX_DELAY);
+    //     if (notif_val != 1) {
+    //         continue;
+    //     }
 
         wsg_data_t* sample = nullptr;
 
-        while (xQueueReceive(flash_mem_q, sample, 10) == pdPASS) {
+        while (xQueueReceive(flash_mem_q, &sample, 10) == pdPASS) {
             // put stuff in write format
             if (sample != nullptr) {
                 std::vector<uint16_t> buf(sample->sample.begin(), sample->sample.end());
                 wsg_mem.indiv_write(sample->timestamp, buf);
                 delete sample;
+                sample = nullptr;
             }
         }
 
-        xTaskNotifyGiveIndexed(data_read_handle, sem_val);
-        taskYIELD();
-    }
+    //     xTaskNotifyGiveIndexed(data_read_handle, sem_val);
+    //     taskYIELD();
+    // }
 }
 
 esp_err_t serialize_msg_and_publish(std::array<wsg_data_t, 6> data_arr)
