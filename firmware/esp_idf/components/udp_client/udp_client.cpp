@@ -72,7 +72,16 @@ esp_err_t UdpClient::ensure_wifi_connection(int max_attempts) {
 }
 
 esp_err_t UdpClient::initialize_wifi_connection() {
+
+    // Chat block
     esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err); 
+
+    // esp_err_t err = nvs_flash_init();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize NVS Flash (err: %d)", err);
         return err;
@@ -133,6 +142,10 @@ esp_err_t UdpClient::initialize_wifi_connection() {
         ESP_LOGE(TAG, "fAILED TO SCAN");
         return err;
     }
+
+    // Added 2 chat lines
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_set_max_tx_power(40);  // lock TX power
 
     // wifi_ap_record_t records[15];
     // uint16_t len = 15;
