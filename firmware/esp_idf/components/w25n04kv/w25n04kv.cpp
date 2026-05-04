@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h> // chat added
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <array>
@@ -206,7 +207,8 @@ esp_err_t W25N04KV::writePage(const std::vector<uint8_t>& tx_data, uint32_t page
 }
 
 esp_err_t W25N04KV::writeExecute(uint32_t page_addr) {
-    ESP_LOGI(TAG, "STARTING WRITE EXEC ON PAGE ADDR %u", page_addr);
+    // ESP_LOGI(TAG, "STARTING WRITE EXEC ON PAGE ADDR %u", page_addr); 
+    ESP_LOGI(TAG, "STARTING WRITE EXEC ON PAGE ADDR %" PRIu32, page_addr); // chat added
     esp_err_t ret = enableWrite();
     std::vector<uint8_t> dummy_rx;
     if (ret != ESP_OK) {
