@@ -42,6 +42,7 @@ extern "C" void app_main(void)
 
     if (WIPE_DATA) {
         wsg_mem.nuke();
+        vTaskDelay(100);
         wsg_mem.erase_all_flash();
     }
     

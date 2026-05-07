@@ -191,7 +191,7 @@ void vTaskDataProcessing(void* pvParameter)
     while (1) {
         sample = new wsg_data_t();
         memset(sample, 0, sizeof(wsg_data_t));
-        sample->wsg_id = 1;
+        sample->wsg_id = wsg_mem.wsg_id;
         sample->timestamp = get_timestamp();
         sample->dac_bias  = dac_bias;
 
@@ -210,7 +210,7 @@ void vTaskDataProcessing(void* pvParameter)
 
         // // Pass data to the mainboard
         udp_data_buf[array_ct] = *sample;
-        ESP_LOGI(TAG, "DATA IN BUF: %d", udp_data_buf[array_ct].wsg_id);
+        // ESP_LOGI(TAG, "DATA IN BUF: %d", udp_data_buf[array_ct].wsg_id);
         array_ct++;
 
         if (array_ct == 6) {

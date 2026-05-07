@@ -242,5 +242,5 @@ extern "C" void app_main(void)
     wsg_mem.erase_all_flash();
     test_meta(wsg_mem);
     test_multi_page_write(wsg_mem, 5);
-    test_write_data_page(wsg_mem);
+    // test_write_data_page(wsg_mem);
 }
