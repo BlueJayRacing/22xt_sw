@@ -487,7 +487,7 @@ void loop() {
     if (sdCardInitialized && baja::storage::functions::isRunning() && loopCount % 5 == 0) {
         baja::storage::functions::process();
     } else if (!baja::storage::functions::isRunning()) {
-        // baja::util::Debug::info(F("SD writing is not working"));
+        baja::util::Debug::info(F("SD writing is not working"));
     }
     
     // Process network operations - only if enough samples are available
