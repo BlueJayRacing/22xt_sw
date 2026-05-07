@@ -167,6 +167,10 @@ bool process() {
             // if (counterValue != 0) {
             //     util::Debug::info(F("Got count: ") + String(counterValue) + F(" on channel: ") + String(i));
             // }
+
+            if (digitalCounterIncremented_[i]) {
+                util::Debug::info(F("Digital channel: ") + String(i) + F(" with count: ") + String(counterValue));
+            }
             
             // Reset the incremented flag
             digitalCounterIncremented_[i] = false;
