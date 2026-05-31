@@ -90,6 +90,8 @@ esp_err_t ADS1120::configure(ads1120_regs_t t_nregs)
         regs_.volt_refs = t_nregs.volt_refs;
     }
 
+    
+
     if (t_nregs.gain != regs_.gain) {
         ret = writeRegisterMasked(t_nregs.gain << 1, ADS1120_REG_MASK_GAIN, ADS1120_CONFIG_REG0_ADDRESS);
         if (ret != ESP_OK) {

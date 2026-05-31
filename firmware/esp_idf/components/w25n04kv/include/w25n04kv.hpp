@@ -15,7 +15,7 @@
 #define W25N04KV_OP_CODE_WRITE_ENABLE   0x06
 #define W25N04KV_OP_CODE_WRITE_DISABLE  0x04
 #define W25N04KV_OP_CODE_BLOCK_ERASE    0xD8
-#define W25N04KV_OP_CODE_DATA_LOAD      0x02
+#define W25N04KV_OP_CODE_DATA_LOAD      0x84 //0x02
 #define W25N04KV_OP_CODE_DATA_EXECUTE   0x10
 #define W25N04KV_OP_CODE_PAGE_READ_DATA 0x13
 #define W25N04KV_OP_CODE_READ_DATA      0x03
@@ -51,7 +51,8 @@ typedef struct w25n04kv_device_config {
     bool status_reg_1_lock;
     bool ecc;
     bool buffer_mode;
-    bool output_driver_strength;
+    // bool output_driver_strength; // OG code
+    uint8_t output_driver_strength; // chat
     bool hold_disable;
 } w25n04kv_device_config_t;
 
@@ -71,6 +72,9 @@ class W25N04KV {
     esp_err_t readConfigRegister(w25n04kv_device_config_t* device_config);
     esp_err_t printConfigReg(void);
     esp_err_t printStatusReg(void);
+    esp_err_t writeConfigRegister(uint8_t byte);
+    esp_err_t wait_for_ready(void);
+    esp_err_t writeExecute(uint32_t page_addr);
 
   private:
     esp_err_t transfer(const uint8_t op_code, std::vector<uint8_t>& rx_data, const uint64_t address,

@@ -5,6 +5,7 @@
 #include "esp_attr.h"
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <driver/spi_slave.h>
 #include <sys/time.h>
 

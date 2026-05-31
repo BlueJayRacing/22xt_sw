@@ -15,18 +15,18 @@
 #include "util/sample_data.hpp"
 #include "util/debug_util.hpp"
 #include "util/channel_mapping.hpp"
-#include <spi_ntp.hpp>
-// #include <recv_wsg_data.hpp>
 
 // Thread modules
 #include "adc/adc_functions.hpp"
 #include "storage/sd_functions.hpp"
 #include "network/pbudp_functions.hpp"      // Combined PB+UDP thread
 #include "digital/digital_functions.hpp"    // Digital input monitoring
-// #include "wsg_streaming/wsg_functions.hpp"
+#include "wsg/wsg_functions.hpp"
 
 // NEW: Time functions module (our NTP/SRTC updater)
 #include "ntp/time_functions.hpp"
+
+// #define ESP_TIMESYNC
 
 uint32_t freeRamLow = UINT32_MAX;
 
@@ -62,7 +62,7 @@ uint32_t samplesProcessedTotal = 0;
 uint32_t startTime = 0;
 uint32_t lastSampleCount = 0;
 
-SPISettings esp_spi_settings(10000000, MSBFIRST, SPI_MODE0);
+SPISettings esp_spi_settings(1000000, MSBFIRST, SPI_MODE1);
 // SpiWsgRecv recv_wsg(&SPI1, 36, esp_spi_settings);
 
 // Global system state variables for Status LED
@@ -254,7 +254,7 @@ void printSystemStatus() {
 
 void setup() {
     // Initialize serial
-    Serial.begin(115200);
+    Serial.begin(9600);
     while (!Serial && millis() < 1000) { }
     
     // Record start time
@@ -279,13 +279,10 @@ void setup() {
     // Initialize SPI
     SPI.begin();
 
-#ifdef ESP_TIMESYNC
-    // start timesync over spi
-    baja::util::Debug::info("Starting time sync with esp");
-    NTPviaSPI sync(&SPI1, 36, esp_spi_settings);
-    sync.sync();
-#endif
-    
+    SPI1.begin();
+
+    baja::wsg_streaming::init(&SPI1, 36, 3, esp_spi_settings, sampleBuffer, fastBuffer);
+
     // Initialize channel configurations
     bool configSuccess = baja::adc::initializeChannelConfigs(
         channelConfigsArray, 
@@ -483,14 +480,14 @@ void loop() {
     // receive data from wsg over spi
     // may need to make handler to add it to circle buf
     // TODO: THIS
-    // baja::wsg_streaming::process();
+    baja::wsg_streaming::process();
     
     // Process SD operations - only if enough samples are available
     // (This is already handled in SDWriter::process())
     if (sdCardInitialized && baja::storage::functions::isRunning() && loopCount % 5 == 0) {
         baja::storage::functions::process();
     } else if (!baja::storage::functions::isRunning()) {
-        // baja::util::Debug::info(F("SD writing is not working"));
+        baja::util::Debug::info(F("SD writing is not working"));
     }
     
     // Process network operations - only if enough samples are available
@@ -509,9 +506,10 @@ void loop() {
     //     }
     // }
 
-    if (networkInitialized && loopCount % 100 == 2) {
-        // Process NTP time updates
+    static bool ntpSynced = false;
+    if (networkInitialized && loopCount % 100 == 2 && !ntpSynced) {
         baja::time::functions::update();
+        ntpSynced = true;
     }
     
     // System monitoring and status reporting (every 5 seconds)

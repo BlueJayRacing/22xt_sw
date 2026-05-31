@@ -1,3 +1,3 @@
 idf_component_register(SRCS "w25n04kv.cpp"
                     INCLUDE_DIRS "include"
-                    REQUIRES driver esp_system log)
+                    REQUIRES driver esp_system log esp_driver_gpio esp_driver_spi freertos)

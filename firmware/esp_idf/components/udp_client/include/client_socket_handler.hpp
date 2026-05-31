@@ -38,6 +38,7 @@ class SocketHandler {
         bool is_socket_open();
 
         void close_sock();
+        void restart();
 
     private:
         esp_err_t partial_socket_init();

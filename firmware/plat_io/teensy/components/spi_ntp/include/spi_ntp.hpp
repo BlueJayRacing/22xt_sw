@@ -16,6 +16,8 @@ class NTPviaSPI {
     public:
         NTPviaSPI(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_);
         NTPviaSPI(SPIClass * spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_);
+        NTPviaSPI();
+        void init(SPIClass* spi_host_, uint8_t cs_pin_, uint8_t handshake_pin_, SPISettings settings_);
         int32_t sync();
     
     private:

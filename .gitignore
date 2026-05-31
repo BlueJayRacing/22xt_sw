@@ -1,8 +1,10 @@
 *.out
 *.o
-**/.vscode/
+**/.vscode/*
 *.lock
 .DS_Store
+**/.idea/
+**/.pio
 
 
 # Digi Xbee POSIX/digiapix executables
@@ -69,5 +71,6 @@ samples/rabbit/my_config.h
 **.pb.cc
 **.pb.h
 **.pb.c
+**/sdkconfig.*
 
 **/get-docker.sh

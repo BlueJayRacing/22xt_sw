@@ -13,6 +13,9 @@
  
  namespace baja {
  namespace util {
+
+constexpr uint8_t WSG0_BASE_CHANNEL_ID = 22;
+constexpr uint8_t WSG1_BASE_CHANNEL_ID = 25;
  
  /**
   * @brief Internal channel ID enumeration
@@ -25,21 +28,21 @@
  enum class InternalChannelID : uint8_t {
      // Analog channels (ADC)
      AIN0 = 0,   // Ground reference
-     AIN1,       // 5V reference
-     AIN2,       // 2.5V reference
+     AIN1,       // SG 2
+     AIN2,       // SG 1
      AIN3,       // 2.5V reference (buffered)
-     AIN4,       // Strain gauge 2
-     AIN5,       // Strain gauge 1
-     AIN6,       // Channel 1
-     AIN7,       // Channel 6
-     AIN8,       // Channel 2 
-     AIN9,       // Channel 7
-     AIN10,      // Channel 3
+     AIN4,       // Channel 1
+     AIN5,       // Channel 2
+     AIN6,       // Channel 3
+     AIN7,       // Channel 4
+     AIN8,       // Channel 5 
+     AIN9,       // Channel 6
+     AIN10,      // Channel 7
      AIN11,      // Channel 8
-     AIN12,      // Channel 4
-     AIN13,      // Channel 9
-     AIN14,      // Channel 5
-     AIN15,      // Channel 10
+     AIN12,      // Channel 9
+     AIN13,      // Channel 10
+     AIN14,      // monitor 5v should be 4.35
+     AIN15,      // 2.5 V ref monitor
      
      // Digital channels
      DIN0 = 16,
@@ -48,9 +51,16 @@
      DIN3,
      DIN4,
      DIN5,
+
+     WSG0_SG0 = 22,
+     WSG0_SG1,
+     WSG0_SG2,
+     WSG1_SG0 = 25,
+     WSG1_SG1,
+     WSG1_SG2,
      
      // Miscellaneous channels
-     MISC0 = 22,  // Can be used for system temperature
+     MISC0 = 28,  // Can be used for system temperature
      MISC1,       // Can be used for power supply voltage
      MISC2,       // Can be used for CPU load
      MISC3,       // Can be used for memory usage
@@ -63,32 +73,38 @@
  };
  
  // Total number of channels in the system
- constexpr uint8_t TOTAL_CHANNEL_COUNT = 30;
+ constexpr uint8_t TOTAL_CHANNEL_COUNT = 36;
  
  // String representations of channel IDs with descriptive names
  const std::array<std::string, TOTAL_CHANNEL_COUNT> CHANNEL_NAMES = {
      "ADC AIN 0 - Ground reference",
-     "ADC AIN 1 - Strain Guage 2",
-     "ADC AIN 2 - Strain Gauge 1",
-     "ADC AIN 3 - 2.5V ldo",
-     "ADC AIN 4 - linpot 1 (FL)",
-     "ADC AIN 5 - linpot 2 (FR)",
-     "ADC AIN 6 - linpot 3 (RL)", 
-     "ADC AIN 7 - linpot 4 (RR)",
-     "ADC AIN 8 - Steering pot",
-     "ADC AIN 9 - Channel 6",
+     "ADC AIN 1 - Strain gage 2",
+     "ADC AIN 2 - Strain gage 1",
+     "ADC AIN 3 - 2.5V reference (buffered)",
+     "ADC AIN 4 - Channel 1, LIN_POT_1_FL",
+     "ADC AIN 5 - Channel 2",
+     "ADC AIN 6 - Channel 3, LIN_POT_2_FR", 
+     "ADC AIN 7 - Channel 4, STEERING_POT_1",
+     "ADC AIN 8 - Channel 5",
+     "ADC AIN 9 - Channel 6, LIN_POT_3_RL",
      "ADC AIN 10 - Channel 7",
-     "ADC AIN 11 - Channel 8",
-     "ADC AIN 12 - Channel 9",
+     "ADC AIN 11 - Channel 8, LIN_POT_4_RR",
+     "ADC AIN 12 - Channel 9, STEERING_POT_2",
      "ADC AIN 13 - Channel 10",
-     "ADC AIN 14 - Channel 5v monitor",
-     "ADC AIN 15 - Channel 10",
+     "ADC AIN 14 - Monitor 5v should be 4.35",
+     "ADC AIN 15 - TWO_5_REF",
      "DIN 0",
      "DIN 1",
      "DIN 2",
      "DIN 3",
      "DIN 4",
      "DIN 5",
+     "WSG0_SG0",
+     "WSG0_SG1",
+     "WSG0_SG2",
+     "WSG1_SG0",
+     "WSG1_SG1",
+     "WSG1_SG2",
      "MISC 0 - System temperature",
      "MISC 1 - Power supply",
      "MISC 2 - CPU load",
@@ -170,7 +186,11 @@
          // Digital channels - enable all by default
          return true;
      }
-     else if (id >= 22 && id <= 29) {
+     else if (id >= 22 && id <= 27) {
+        // wsg channels
+        return true;
+     }
+     else if (id >= 28 && id <= 36) {
          // Misc channels - disable by default, enable programmatically as needed
          return false;
      }

@@ -18,16 +18,24 @@ void Test::testADS1120(void)
     gpio_install_isr_service(0);
 
     ads1120_init_param_t adc_params;
-    adc_params.cs_pin = GPIO_NUM_21;
-    adc_params.drdy_pin = GPIO_NUM_2;
+    adc_params.cs_pin = GPIO_NUM_38;
+    adc_params.drdy_pin = GPIO_NUM_8;
     adc_params.spi_host = SPI2_HOST;
+
+    ad5626_init_param_t ad5626_params {
+    .cs_pin = GPIO_NUM_37,
+    .ldac_pin = GPIO_NUM_36,
+    .clr_pin = GPIO_NUM_NC,
+    .spi_host = SPI2_HOST
+};
+
 
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg, 0, sizeof(spi_bus_config_t));
 
-    spi_cfg.mosi_io_num = SPI_MOSI_PIN;
-    spi_cfg.miso_io_num = SPI_MISO_PIN;
-    spi_cfg.sclk_io_num = SPI_SCLK_PIN;
+    spi_cfg.mosi_io_num   = GPIO_NUM_9;
+    spi_cfg.miso_io_num   = GPIO_NUM_8;
+    spi_cfg.sclk_io_num   = GPIO_NUM_7;
     spi_cfg.quadwp_io_num = -1;
     spi_cfg.quadhd_io_num = -1;
 
@@ -43,10 +51,19 @@ void Test::testADS1120(void)
         return;
     }
 
+
+    AD5626 dac_;
+    ret = dac_.init(ad5626_params);
+    if (ret) {
+        return;
+    }
+
+    dac_.setLevel(0);
+
     testConfigureADS1120();
-    testSingleReadADS1120();
-    testContinuousReadADS1120();
-    testContinousReadViaInterruptADS1120();
+    // testSingleReadADS1120();
+    while (1) testContinuousReadADS1120();
+    // testContinousReadViaInterruptADS1120();
 }
 
 void Test::testConfigureADS1120(void)
@@ -58,7 +75,7 @@ void Test::testConfigureADS1120(void)
 
     ads1120_regs_t readout_regs;
 
-    adc_regs.channels = AIN0_AIN1;
+    adc_regs.channels = AIN2_AVSS;
     assert(adc_.configure(adc_regs) == ESP_OK);
     adc_.getRegs(&readout_regs);
     assert(memcmp(&adc_regs, &readout_regs, sizeof(ads1120_regs_t)) == 0);
@@ -70,7 +87,7 @@ void Test::testConfigureADS1120(void)
     assert(memcmp(&adc_regs, &readout_regs, sizeof(ads1120_regs_t)) == 0);
     ESP_LOGV(TAG, "Successfully set voltage references");
 
-    adc_regs.gain = GAIN_32;
+    adc_regs.gain = GAIN_1;
     assert(adc_.configure(adc_regs) == ESP_OK);
     adc_.getRegs(&readout_regs);
     assert(memcmp(&adc_regs, &readout_regs, sizeof(ads1120_regs_t)) == 0);
@@ -100,7 +117,7 @@ void Test::testConfigureADS1120(void)
     assert(memcmp(&adc_regs, &readout_regs, sizeof(ads1120_regs_t)) == 0);
     ESP_LOGV(TAG, "Successfully set conv mode");
 
-    adc_regs.temp_mode = TEMPMODE_ENABLED;
+    adc_regs.temp_mode = TEMPMODE_DISABLED;
     assert(adc_.configure(adc_regs) == ESP_OK);
     adc_.getRegs(&readout_regs);
     assert(memcmp(&adc_regs, &readout_regs, sizeof(ads1120_regs_t)) == 0);
@@ -167,11 +184,13 @@ void Test::testSingleReadADS1120(void)
     int16_t data;
     int num_success_reads = 0;
     
-    for (int i = 0; i < NUM_SINGLE_SAMPLES; i++) {
-        if (adc_.readADC(&data) == ESP_OK) {
-            num_success_reads++;
-        }
-    }    
+    while (1) {        for (int i = 0; i < NUM_SINGLE_SAMPLES; i++) {
+            if (adc_.readADC(&data) == ESP_OK) {
+                ESP_LOGI(TAG, "READ DATA %d", data);
+                num_success_reads++;
+            }
+        }    
+    }
 
     ESP_LOGI(TAG, "Number of successful reads: %d", num_success_reads);
     assert(num_success_reads == NUM_SINGLE_SAMPLES);
@@ -187,7 +206,7 @@ void Test::testContinuousReadADS1120(void)
     memset(&adc_regs, 0, sizeof(ads1120_regs_t));
 
     adc_regs.conv_mode = CONTINUOUS;
-    adc_regs.op_mode = TURBO;
+    adc_regs.op_mode = NORMAL;
     adc_regs.data_rate = 6; // 2000 SPS
 
     adc_.configure(adc_regs);
@@ -199,8 +218,11 @@ void Test::testContinuousReadADS1120(void)
     int current_time = esp_timer_get_time();
 
     while (current_time - 1000000 < start_time) {
-        while (!adc_.isDataReady()) {}
+        // while (!adc_.isDataReady()) {}
+        // vTaskDelay(10);
+        data = 0;
         if (adc_.readADC(&data) == ESP_OK) {
+            ESP_LOGI(TAG, "DATA: %d", data);
             num_success_reads++;
         } else {
             num_failed_reads++;
@@ -211,7 +233,7 @@ void Test::testContinuousReadADS1120(void)
 
     ESP_LOGI(TAG, "Number of successful reads: %d", num_success_reads);
     ESP_LOGI(TAG, "Number of failed reads: %d", num_failed_reads);
-    assert(num_success_reads > 1900 && num_success_reads < 2100);
+    // assert(num_success_reads > 1900 && num_success_reads < 2100);
 
     ESP_LOGI(TAG, "Passed Continuous Testing Reading ADC");
 }

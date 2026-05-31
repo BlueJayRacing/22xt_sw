@@ -1,6 +1,6 @@
 #include "client_socket_handler.hpp"
 
-static const char* TAG = "socket handler";
+static const char* TAG = "client socket handler";
 
 SocketHandler::SocketHandler() {
     mutex = xSemaphoreCreateMutex();
@@ -13,15 +13,17 @@ SocketHandler::~SocketHandler() {
 esp_err_t SocketHandler::init(int port_, char * host_ip_addr) {
     socklen = sizeof(sockaddr_in);
 
+    ESP_LOGW(TAG, "IP ADDR HOST: %s, PORT: %d", host_ip_addr, port_);
+
     dest_addr.sin_addr.s_addr = inet_addr(host_ip_addr);
     dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(port);
+    dest_addr.sin_port = htons(port_);
 
     return partial_socket_init();
 }
 
 esp_err_t SocketHandler::partial_socket_init() {
-    timeout.tv_sec = 1;
+    timeout.tv_sec = 10;
     timeout.tv_usec = 0;
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
@@ -45,7 +47,7 @@ bool SocketHandler::is_socket_open() {
 }
 
 esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t buf_len) {
-    if (buf_len > 30) {
+    if (buf_len > 130) {
         ESP_LOGE(TAG, "Invalid send buffer size of %d", buf_len);
         return ESP_FAIL;
     }
@@ -55,12 +57,21 @@ esp_err_t SocketHandler::send(std::array<uint8_t, MESSAGE_MAX_LEN> buf, size_t b
         partial_socket_init();
     }
 
+    // ESP_LOGI(TAG, "sending %d %d", is_socket_open(), buf_len);
+    // for (int i = 0; i < buf.size(); i ++) {
+    //     ESP_LOGI(TAG, "%d: %d", i, buf[i]);
+    // }
+
     int err = sendto(sock, buf.data(), buf_len, 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
     if(err < 0) {
-        ESP_LOGE(TAG, "Error sending message over socket");
+        ESP_LOGE(TAG, "Error sending message over socket %d", err);
+        close_sock();
+        partial_socket_init();
         return ESP_FAIL;
     }
+
+    ESP_LOGW(TAG, "Sent %d bytes", err);
 
     return ESP_OK;
 }
@@ -90,6 +101,11 @@ int SocketHandler::recv(Message * msg) {
     msg->payload_len = len;
 
     return len;
+}
+
+void SocketHandler::restart() {
+    close_sock();
+    partial_socket_init();
 }
 
 void SocketHandler::close_sock() {

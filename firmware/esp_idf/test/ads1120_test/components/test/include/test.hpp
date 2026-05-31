@@ -3,6 +3,7 @@
 #define _TEST_HPP_
 
 #include <ads1120.hpp>
+#include <ad5626.hpp>
 
 class Test {
   public:

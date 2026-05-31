@@ -6,6 +6,7 @@
 #include <driver/spi_master.h>
 #include <esp_system.h>
 
+
 // The Clear Pin is optional
 typedef struct ad5626_init_param {
   gpio_num_t cs_pin;
